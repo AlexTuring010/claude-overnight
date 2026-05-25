@@ -25,8 +25,9 @@ and iteration caps are *stop-and-leave-a-note* boundaries, never
 *ship-what-we-have* boundaries. Worst acceptable outcome is "it halted with a
 clear note." Never: "it shipped something shallow to make the night look
 successful." Every other rule in this document — separation of duties, the
-runner staying dumb, deterministic verification, the read-only morning digest —
-is in service of this.
+runner staying dumb, the verification gate (deterministic where possible,
+honestly-soft where not — §3), the read-only morning digest — is in service
+of this.
 
 ---
 
@@ -44,6 +45,7 @@ project and removes cleanly.
 │  ├─ run.py                    # install-level: the runner (§6)
 │  ├─ manifest.json             # install-level: every path the system created (§11)
 │  ├─ HANDOFF.md                # install-level: written last — what was built + how to run (§8)
+│  ├─ NEXT.md                   # bootstrap-transient: kickoff line for the next /clear handoff; deleted after Phase C (§2)
 │  ├─ INTENT.md                 # goal-level: captured human intent for this goal (§2 Phase A)
 │  ├─ BUILD_PLAN.md             # goal-level: system-construction roadmap (§2 Phase B)
 │  ├─ wakeup.html               # goal-level: morning digest, regenerated each iteration (§7)
@@ -58,13 +60,18 @@ project and removes cleanly.
 │  ├─ commands/overnight.md     # the ONE command that loads system context (§1)
 │  └─ agents/overnight-*.md     # the agent roles (§4) — prefixed, tracked
 └─ <the human's real work>      # on a dedicated branch per track, plus an integration branch
+                                # — when >1 track runs concurrently, each branch is checked
+                                # out into its own git worktree under `.overnight/worktrees/`
+                                # (see §3, §6 step 2)
 ```
 
 `CLAUDE.md` is **not** in this list — the system never touches it (see rule 3).
 Note the split: **install-level** files persist across goals (the runner, the
 command, the agents, orientation, manifest); **goal-level** files (INTENT,
 BUILD_PLAN, ROADMAP, bus, wakeup.html) belong to the current goal and are
-archived + reset when a goal completes (§11).
+archived + reset when a goal completes (§11); **bootstrap-transient** files
+(`NEXT.md`) bridge the `/clear` handoffs during setup and are deleted when
+Phase C finishes (§2).
 
 Paths in this file are written relative to the project root. Everything the
 system owns sits under `.overnight/` (so `ROADMAP.md`, `run.py`, `bus/`,
@@ -205,6 +212,16 @@ then the build in Phase C using fresh subagents per artifact. Two
 in Phase A** — same principle that makes overnight work, applied to
 setup — so the `/clear` when it comes is expected, not jarring.
 
+Each `/clear` boundary has a kickoff line for the next session.
+Because `/clear` erases exactly the message that contains it, the
+handing-off session also **writes the kickoff to
+`.overnight/NEXT.md`** before signing off, and tells the human
+where to find it. State lives in files, not in conversation
+memory — that includes the single most load-bearing instruction at
+every transition. A newcomer who clears before copying, or who
+closes the terminal between sessions, recovers by opening
+`NEXT.md`.
+
 ### Phase A — Intent (this session, conversational)
 
 0. **Get your bearings.** If the directory isn't empty, survey it first
@@ -215,7 +232,12 @@ setup — so the `/clear` when it comes is expected, not jarring.
    as a returning install, and jump to the §11 re-entry behaviour —
    resume an active goal, or if none is active, ask whether to review
    past goals or set up a new one. Check the archive (§11) too: a
-   similar past goal is reference material.
+   similar past goal is reference material. **If `.overnight/NEXT.md`
+   exists**, a previous bootstrap was interrupted between phases —
+   read it, point the human at the right next session and the line to
+   paste, and stop. Don't try to resume Phase B or Phase C work in
+   this Phase A session; the whole point of the `/clear` is that the
+   resume happens in a fresh one.
 
 1. **Welcome and orient the human.** Assume they're new to this — they
    likely grabbed this file to try it out and have no idea what it
@@ -250,14 +272,37 @@ setup — so the `/clear` when it comes is expected, not jarring.
    the conversation that produced it** — it's the bridge into clean
    context.
 
-4. **Hand off to Phase B.** Tell the human:
-   > "Intent captured in `.overnight/INTENT.md`. Now `/clear` this
-   > session and paste this in the fresh session — that one plans the
-   > build in clean context, same principle that makes overnight
-   > work:
+4. **Hand off to Phase B.** First, write the Phase B kickoff to
+   `.overnight/NEXT.md` so it survives the `/clear`. The file's
+   content is just the instruction the human will paste, with a
+   short header so it reads clearly if opened directly:
+
+   ```
+   # Next: Phase B (build plan)
+
+   `/clear` this session, then paste the line below as the first
+   prompt in the fresh session:
+
+   Read .overnight/INTENT.md and START_HERE.md (all of it — §2
+   Phase B for your task, the rest for context to brief each
+   artifact well), then produce .overnight/BUILD_PLAN.md and stop
+   for review.
+   ```
+
+   Then tell the human:
+
+   > "Intent captured in `.overnight/INTENT.md`. The kickoff for
+   > the next session is also written to `.overnight/NEXT.md` — if
+   > you `/clear` before copying the line below, or close the
+   > terminal between now and the next session, just open that
+   > file to recover it. Now `/clear` this session and paste this
+   > in the fresh session — that one plans the build in clean
+   > context, same principle that makes overnight work:
    >
-   > `Read .overnight/INTENT.md and START_HERE.md §2 Phase B, then
-   > produce .overnight/BUILD_PLAN.md and stop for review.`"
+   > `Read .overnight/INTENT.md and START_HERE.md (all of it — §2
+   > Phase B for your task, the rest for context to brief each
+   > artifact well), then produce .overnight/BUILD_PLAN.md and
+   > stop for review.`"
 
    Stop here. Do not begin Phase B in this session.
 
@@ -265,7 +310,9 @@ setup — so the `/clear` when it comes is expected, not jarring.
 
 The human pastes the kickoff line above. You enter this phase with no
 memory of Phase A — that's the point. Read `.overnight/INTENT.md` and
-this section, then:
+all of START_HERE.md (the `/clear` removed Phase A's conversation,
+not your need for the spec — §2 Phase B is the task, but §1, §3, §4,
+§5, §6 are what you need to brief each artifact well), then:
 
 1. **Read INTENT.md carefully.** If anything is missing, contradictory,
    or unclear, write the gaps to `.overnight/INTENT_QUESTIONS.md` and
@@ -286,13 +333,32 @@ this section, then:
 3. **Play back the build plan.** Let the human reorder, drop, or add
    steps before Phase C builds anything.
 
-4. **Hand off to Phase C.** Tell the human:
-   > "Build plan in `.overnight/BUILD_PLAN.md`. Now `/clear` and paste
-   > this — the build itself happens in that session, using fresh
-   > subagents per artifact so each piece gets clean context:
+4. **Hand off to Phase C.** First, overwrite `.overnight/NEXT.md`
+   with the Phase C kickoff so the next session can recover it if
+   the chat buffer is lost:
+
+   ```
+   # Next: Phase C (build)
+
+   `/clear` this session, then paste the line below as the first
+   prompt in the fresh session:
+
+   Read .overnight/INTENT.md, .overnight/BUILD_PLAN.md, and all of
+   START_HERE.md (§2 Phase C is your task; the rest informs
+   spot-checks of subagent output), then build the system.
+   ```
+
+   Then tell the human:
+
+   > "Build plan in `.overnight/BUILD_PLAN.md`. The kickoff for the
+   > build session is in `.overnight/NEXT.md` if you lose the line
+   > below. Now `/clear` and paste this — the build itself happens
+   > in that session, using fresh subagents per artifact so each
+   > piece gets clean context:
    >
-   > `Read .overnight/INTENT.md and .overnight/BUILD_PLAN.md and
-   > START_HERE.md §2 Phase C, then build the system.`"
+   > `Read .overnight/INTENT.md, .overnight/BUILD_PLAN.md, and all
+   > of START_HERE.md (§2 Phase C is your task; the rest informs
+   > spot-checks of subagent output), then build the system.`"
 
    Stop here.
 
@@ -311,10 +377,17 @@ A or B. Read INTENT, BUILD_PLAN, and this section, then:
    already-produced artifacts: [paths]. Build only the step's named
    artifact at the declared output path. Return that path plus a
    one-paragraph summary of what you wrote and any assumptions you
-   made." The parent (this session) orchestrates; the subagent
-   authors each piece in a clean context. This is what avoids forcing
-   the human into a `/clear` marathon — the freshness happens inside
-   the Task call, not at the human's prompt.
+   made." For artifacts that encode system principles or behaviour —
+   `orientation.md` and the agent prompts in particular — also
+   direct the subagent to read the relevant START_HERE.md sections
+   (§3 for principles, §1 for the human-channel contract, §4 for
+   agent roles, §5 for the bus protocol, §6 step 3 for the
+   control-block schema). A brief that paraphrases these
+   second-hand loses nuance; the subagent encodes from source. The
+   parent (this session) orchestrates; the subagent authors each
+   piece in a clean context. This is what avoids forcing the human
+   into a `/clear` marathon — the freshness happens inside the
+   Task call, not at the human's prompt.
 
 3. **After each subagent returns**, mark the step `done` in
    BUILD_PLAN.md, record the path in `manifest.json`, and dispatch
@@ -327,8 +400,34 @@ A or B. Read INTENT, BUILD_PLAN, and this section, then:
    are fine; if they want to rethink intent, route them back to Phase
    A (`/clear` and re-scope).
 
-5. **Write `.overnight/HANDOFF.md`** (§8) — what was built, the run
+5. **Smoke-test the apparatus before the first real run.** The
+   entire system — runner, control-block parsing, rate-limit reactor,
+   branch/worktree orchestration, wakeup generator, the
+   `orientation.md` distillation itself — is freshly authored from
+   prose every time, so the assembling session is the only thing
+   that has read it end-to-end. Don't trust that overnight without
+   proving it once. Run `python .overnight/run.py --smoke` (§6):
+   the runner executes two no-op checks. The **pipeline check**
+   dispatches a placeholder prompt that returns a well-formed
+   control block with `status: done` and `checks_passed: true`,
+   then verifies the block round-trips and parses, `bus/state.json`
+   updates, a reviewer call fires, `wakeup.html` regenerates. The
+   **orientation check** spawns a fresh session with only
+   `orientation.md` loaded and asks it diagnostic questions about
+   the §3 principles, bus layout, fallback prompt, and
+   control-block schema — if the session can't answer from
+   orientation alone, the distillation is thin. If either fails,
+   the smoke run prints what broke and where; fix it in this
+   session before writing HANDOFF.md. The failure modes here — a
+   brittle rate-limit regex, a malformed control block, a path
+   typo in the digest generator, an `orientation.md` missing the
+   principles — are exactly the ones that surface at 3am if left
+   for the first real run to discover.
+
+6. **Write `.overnight/HANDOFF.md`** (§8) — what was built, the run
    command, `wakeup.html` path, `/overnight` command, how to finish.
+   Then delete `.overnight/NEXT.md` — bootstrap is complete; no
+   further `/clear` handoffs to bridge.
 
 ---
 
@@ -409,26 +508,57 @@ These are hard-won; encode them into `.overnight/orientation.md`,
   iteration boundary; the runner asks "what's next?" and executes what
   comes back.
 
+- **Parallel tracks live in git worktrees, not the main checkout.**
+  A working tree can only have one branch checked out at a time, so
+  two concurrent `claude -p` sessions on two branches in the same
+  directory would collide. The runner creates one worktree per
+  concurrently-active track (`git worktree add .overnight/worktrees/<track>
+  <branch>`) and runs each session with that worktree as its cwd. A
+  single-track goal needs no worktree — work happens in the main
+  checkout. The integration branch gets its own worktree only when
+  merges run concurrently with track work; otherwise it can be a
+  checkout in the main directory between iterations. Worktrees are
+  recorded in `manifest.json` and torn down when the goal is
+  archived (§11). `.overnight/` itself is **not** duplicated per
+  worktree — it lives in the main checkout, and the runner passes its
+  absolute path into each session's prompt so every track reads/writes
+  the same bus.
+
 - **File scope per track.** When parallel tracks exist, the planner
   partitions the filesystem: each track has a declared write scope
   (paths it owns). Other tracks may read but not write into a track's
   scope. Anything that needs to cross scopes serializes through the
-  planner. Each track lives on its own branch; the planner schedules
+  planner. Each track lives on its own branch (in its own worktree
+  when running concurrently — see above); the planner schedules
   merge points into an integration branch, and the reviewer runs an
   integration pass after each merge.
 
-- **Deterministic verification gate.** A step is `done` only if the
-  project's declared checks pass — build / tests / lint / typecheck /
-  render, elicited in the interview (§9). The reviewer runs them
-  after every builder `done`; failure routes the step back to the
-  planner as `blocked`, never silently accepted. For **pure-content
-  projects**, the gate is "the artifact builds without errors AND a
-  fresh reviewer session finds no factual gaps against cited source
-  material." For **UI projects**, the gate additionally includes
-  browser-level verification of acceptance criteria — not just
-  typecheck/build/lint — using a project-declared browser skill (e.g.
-  `dev-browser`, Playwright). "Works in the browser" is part of the
-  gate, not a bonus.
+- **Verification gate (be honest about how hard it is).** A step is
+  `done` only after the project's declared checks pass; the reviewer
+  runs them after every builder `done`, and failure routes the step
+  back to the planner as `blocked`, never silently accepted. The
+  *strength* of the gate depends on what the project actually is, so
+  don't oversell it:
+  - **Code / build / library / data-pipeline goals — deterministic.**
+    Build, tests, lint, typecheck, link-check, schema-validate. Pass
+    or fail is a return code; the reviewer's role is to run the
+    commands and route the result. This is the strong form.
+  - **UI goals — deterministic, plus browser checks.** The above plus
+    browser-level verification of declared acceptance criteria, via a
+    project-declared browser skill (e.g. `dev-browser`, Playwright).
+    "Works in the browser" is part of the gate, not a bonus. Still
+    deterministic — assertions pass or fail.
+  - **Pure-content goals (prose, notes, study sites) — soft.** The
+    artifact must build/render without errors (deterministic part),
+    AND a fresh reviewer session must find no factual gaps against
+    cited source material (LLM judgment — *not* deterministic). Be
+    plain about this with the human: the soft half can miss things a
+    careful editor would catch; the safeguard is citation discipline
+    in the builder (every substantive claim links back to source) so
+    the reviewer can actually verify rather than vibes-check.
+  Whichever form applies, the rule that "never silently `done` without
+  a green gate" holds; what differs is how much trust the gate
+  itself deserves.
 
 - **Builder self-checks before declaring `done`.** The builder may
   (and for UI/integration work, should) invoke project-declared
@@ -458,6 +588,44 @@ These are hard-won; encode them into `.overnight/orientation.md`,
   non-progress, or a step revisited more than `MAX_STEP_VISITS` (~3)
   times across sessions, halt and leave a clear message in
   `wakeup.html` rather than looping.
+
+These principles only persist if they're written somewhere future
+sessions actually load. `orientation.md` is that file — the runner
+injects it into every `claude -p` prompt and `/overnight` loads it
+into every interactive session, so it is the sole connective tissue
+between this assembling conversation and every night that follows.
+Treat it as a content-spec'd artifact, not a free-form briefing.
+**A Phase C build of `orientation.md` must contain, at minimum:**
+
+1. **Identity** — one paragraph: what the system is, this goal's
+   name, the track structure at build time, a pointer to the rest
+   of the apparatus.
+2. **The principles above** — verbatim or tightly condensed, all
+   of them. Quality-first, no-HITL-overnight, intelligence-in-
+   agents-not-runner, one-task-per-session, the honest
+   verification-gate tiers, stop-safely. Drop any and future
+   sessions inherit a diluted version.
+3. **Bus layout** — what each file under `bus/` does, what
+   `state.json` contains, how a session reads its inbox and
+   writes its log entry.
+4. **Control-block schema** (§6 step 3) — the exact contract
+   every session must emit, so an agent dropped into the runner
+   knows the shape to return.
+5. **Per-role responsibilities and tool restrictions** (§4) — so
+   a session loading orientation knows which agent it is, what it
+   may read/write, and which self-check skills it can invoke.
+6. **The fallback prompt** (verbatim from §1) — so the human can
+   summon the system without `/overnight`.
+7. **Pointers, not copies** — to `run.py`, the agent files,
+   `manifest.json`, the archive location, and this goal's
+   `INTENT.md` and `ROADMAP.md`. Long-form content stays in its
+   source file; `orientation.md` is the index plus the
+   load-bearing principles.
+
+A fresh session must be able to read `orientation.md` in 2–3
+minutes and then act correctly without ever opening START_HERE.md.
+If that isn't true, `orientation.md` is incomplete — and the
+smoke run (§6) is what proves it before the first real night.
 
 ---
 
@@ -553,6 +721,7 @@ Keep it dead simple and human-readable.
         "name": "infra",
         "scope": ["app/server/**", "infra/**"],
         "branch": "overnight/T1-infra",
+        "worktree_path": ".overnight/worktrees/T1",
         "cursor": "step-3",
         "status": "active",
         "step_visits": {"step-3": 1},
@@ -560,8 +729,9 @@ Keep it dead simple and human-readable.
       }
     },
     "integration_branch": "overnight/integration",
-    "cumulative_cost_usd": 12.34,
     "cumulative_iterations": 47,
+    "cumulative_notional_usd": 12.34,
+    "last_rate_limit": null,
     "last_status": "<one-line summary>"
   }
   ```
@@ -609,9 +779,21 @@ comes from an agent via the control block.
 
 2. **Spawn sessions.** For each track with an advance, spawn one
    `claude -p "<prompt>" --output-format json --permission-mode acceptEdits`
-   session on that track's branch. When the planner returns work for N > 1
-   tracks, spawn them concurrently (subprocess pool). Default is N = 1; the
-   planner only goes higher when it judges parallel safe under §3.
+   session with that track's worktree as the working directory.
+   - **Single-track (N = 1):** no worktree — the session runs in the
+     main checkout on the track's branch.
+   - **Concurrent (N > 1):** before spawning, ensure each track has a
+     worktree (`git worktree add .overnight/worktrees/<track> <branch>`,
+     creating the branch if absent). Spawn sessions concurrently
+     (subprocess pool), one per worktree, so two `claude -p` calls
+     never share a working directory. This is what makes parallelism
+     real — without separate worktrees, concurrent sessions on
+     different branches either collide on the index or silently
+     serialize.
+   - Track-worktree mapping lives in `bus/state.json` (`worktree_path`
+     per track when present) and is mirrored in `manifest.json` for
+     cleanup. Default is N = 1; the planner only goes higher when it
+     judges parallel safe under §3.
 
 3. **Collect control blocks.** Each session ends its reply with a fenced
    ` ```control ` block. Make it **action-oriented**, so the agent tells
@@ -633,6 +815,27 @@ comes from an agent via the control block.
    ```
    Append each to `bus/log/`. Update `bus/state.json` (cursors, visit
    counters, blockers).
+
+   **Validation and repair.** Models don't always comply, and a single
+   bad emission must not wedge a track. After extracting the block,
+   parse it as JSON and validate against a strict schema (required
+   fields, allowed `status`/`action` enums, `decision_question`
+   required iff `status == needs-decision`).
+   - **Missing block** (no fenced `control` section at all): treat as
+     an orphan per §6 crash-recovery — mark the step `partial`, log
+     the raw output, hand back to the planner.
+   - **Malformed block** (block present but unparseable, or fails
+     schema): make **one** repair attempt — re-prompt that same
+     session with the raw block and a short error pointer ("your
+     control block is missing field `track`; emit only a corrected
+     ` ```control ``` block and nothing else"). If the retry also
+     fails validation, stop retrying — log both attempts to
+     `bus/log/`, mark the step `blocked` with reason
+     `control_block_invalid`, and hand back to the planner. Two
+     bad emissions on the same step is a stuck-track signal, not
+     something to grind on.
+   - Repair attempts count toward `MAX_STEP_VISITS` so a track that
+     can't emit a valid block doesn't loop forever on retries.
 
 4. **Verification gate.** For each builder `done`, the runner invokes the
    **reviewer** to run the project's declared checks. If they fail, flip
@@ -657,17 +860,69 @@ comes from an agent via the control block.
 The runner is plumbing.
 
 **Caps, always (`run.py` enforces):**
-- `MAX_ITERATIONS` (global)
-- `MAX_BUDGET_USD` (global; per-track distribution tracked and shown to
-  the planner so it can rebalance)
+- `MAX_ITERATIONS` (global) — the primary numeric cap.
 - `MAX_STEP_VISITS` (~3 per step) — the loop-detection guard from §3;
   halt and note in `wakeup.html` if any single step is touched more than
-  this many times across sessions
-- Running cost printed each iteration, per-track distribution included
+  this many times across sessions.
+- **Window-usage is the cap that actually bites**, and it's enforced
+  reactively, not predictively: the plan's rolling 5-hour and weekly
+  windows are observable to us only as rate-limit errors from
+  `claude -p`. §6.4 is how the runner respects them — wait through a
+  5-hour reset, halt cleanly on a weekly cap. Don't try to model window
+  burn in Python; let the API tell you.
+- `MAX_NOTIONAL_USD` (optional, soft) — the API-equivalent dollar
+  figure `claude -p` reports. On a Pro/Max plan this is **not money
+  spent**; it's a useful proxy for "how much work happened." Setting it
+  acts as a belt-and-braces halt ("stop after $X-equivalent of activity
+  even if iterations remain"); leaving it unset is fine. Per-track
+  distribution is tracked and shown to the planner regardless, so it
+  can rebalance.
+- Running notional cost and iteration count printed each iteration,
+  per-track distribution included. Both are visibility numbers; the
+  hard halts are `MAX_ITERATIONS`, `MAX_STEP_VISITS`, and the
+  rate-limit reactor.
 
 **Subscription billing guard.** Before starting, verify
 `ANTHROPIC_API_KEY` is **not** set in the environment and `claude` is
 logged in. Refuse to start otherwise.
+
+**Preflight smoke mode (`--smoke`).** A one-shot self-test of the
+apparatus, run automatically at the end of Phase C (§2) and available
+on demand. Two complementary checks, both mechanical:
+
+*Pipeline check* — dispatch one trivial placeholder prompt (e.g.
+"reply with a control block declaring `status: done`,
+`checks_passed: true`, and no file edits"); parse the returned
+control block against the schema; update `bus/state.json` with
+the (no-op) result; invoke a reviewer-mode call that returns
+immediately; regenerate `wakeup.html`. If every stage round-trips
+cleanly, the pipeline is green.
+
+*Orientation check* — spawn one fresh `claude -p` session whose
+only loaded context is `.overnight/orientation.md` (no INTENT, no
+BUILD_PLAN, no START_HERE) and instruct it to answer four
+diagnostic questions in its control-block `summary`: (a) name
+three of the §3 principles, (b) the path where bus state lives,
+(c) the fallback prompt verbatim, (d) the required fields of a
+builder's control block. Parse the answers; if any is missing,
+generic, or wrong, `orientation.md` is too thin to brief future
+sessions — print which question failed and exit non-zero. This
+is the test that proves the distillation worked; without it, an
+under-specified orientation only surfaces as degraded overnight
+quality weeks later.
+
+If any stage of either check fails, print which stage and what
+was wrong (e.g. "control block parse failed: missing `track`
+field at offset 124"; "orientation check failed: session could
+not produce the fallback prompt verbatim — `orientation.md` is
+missing §1's exact line") and exit non-zero — leave the partial
+state in place so the assembling session can diagnose. The smoke
+run does **not** spawn builder work, does **not** create branches
+or worktrees, and does **not** consume meaningful window budget.
+It's there because the whole system was freshly authored from
+prose and the only prior integration test is the human reading
+the digest at 3am — too late to find a broken regex or a thin
+orientation.
 
 ### Stopping, diagnosing, recovering
 
@@ -798,8 +1053,11 @@ to `bus/intent-corrections.md`, not here.
 
 **Sections, in order:**
 
-1. **Header.** Goal name; date range covered by this digest; total cost
-   and duration; caps remaining (iterations, USD); overall status.
+1. **Header.** Goal name; date range covered by this digest; duration
+   and total **notional cost** (API-equivalent dollars `claude -p`
+   reports — not money spent, on a plan); iterations used vs.
+   `MAX_ITERATIONS`; current rate-limit window state (active / waiting
+   for reset at HH:MM / weekly cap hit); overall status.
 2. **Per-track status cards.** One card per active or recently-completed
    track: name, scope, % complete (steps done / total), current status
    (active / blocked / done), current blocker if any.
@@ -819,8 +1077,10 @@ to `bus/intent-corrections.md`, not here.
    without diffing `ROADMAP.md`.
 6. **Open review items / blocks / stalls.** Anything that didn't close
    cleanly, with a one-line "what the planner intends to try next."
-7. **Cost-per-step bars.** Simple inline-SVG bar chart. Surfaces runaway
-   steps before they eat tomorrow night.
+7. **Notional-cost-per-step bars.** Simple inline-SVG bar chart of the
+   API-equivalent figure per step. Not money on a plan, but a useful
+   relative signal — surfaces runaway steps before they eat tomorrow
+   night's window allotment.
 
 The digest is the human's morning interface to the system. Treat it as
 a first-class artifact: if it's ugly or unscannable, the human will
@@ -830,18 +1090,36 @@ give up on reading it and the loop closes badly.
 
 ## 8. HANDOFF.md (write this last, to `.overnight/HANDOFF.md`)
 
-- One paragraph: what got assembled, what the goal is, which tracks were
-  identified, what deterministic checks were declared.
+- One paragraph: what got assembled, what the goal is, which tracks
+  were identified, what verification checks were declared — and
+  whether the gate is fully deterministic (code/UI) or partly
+  soft-reviewer-judged (pure content), per §3.
 - A checklist for the human, **especially before the first run** (and
   worth re-skimming before any night that follows a significant
   re-scoping): *read* — don't just skim — each step on the first track
   in `.overnight/ROADMAP.md`; confirm the principal agent's profile
   matches your taste and red lines; read the declared check commands;
-  glance at the runner caps (iterations, USD, step visits). The first
-  night's quality depends on these being right — five minutes here
-  saves a night of wrong-shape work, and the agents will be running
-  this same plan in clean contexts without you, so anything that's
-  wrong in writing will be wrong in execution.
+  glance at the runner caps (`MAX_ITERATIONS`, `MAX_STEP_VISITS`,
+  optional `MAX_NOTIONAL_USD`). The first night's quality depends on
+  these being right — five minutes here saves a night of wrong-shape
+  work, and the agents will be running this same plan in clean
+  contexts without you, so anything that's wrong in writing will be
+  wrong in execution.
+- **Smoke-test passed at assembly time** (§2 Phase C step 5). Re-run
+  `python .overnight/run.py --smoke` after any change to the runner,
+  the agent prompts, or `wakeup.html` generation — it's a cheap
+  proof that the apparatus still round-trips before you trust it
+  overnight.
+- **Honest scope note on isolation.** The system runs `claude -p`
+  with `--permission-mode acceptEdits`; builder agents can invoke
+  declared self-check skills (test runners, build commands, browser
+  drivers), which means arbitrary shell can run overnight. Git
+  branch + worktree isolation contains file damage (throw the
+  branch away), not command damage. Fine for personal, low-stakes
+  work; if this project touches production credentials, paid
+  external APIs, or shared infrastructure, run the loop inside a
+  container or VM rather than relying on branch isolation alone.
+  (§10)
 - **Run it:** `python .overnight/run.py` — the overnight loop.
 - **Stop it cleanly:** `touch .overnight/STOP` from any terminal, or
   Ctrl-C in the runner's terminal, or tell `/overnight` "stop after
@@ -904,14 +1182,18 @@ human's own voice, things like:
   the system touch, and what is off-limits?
 - What is the source of truth the work must stay grounded in, and where
   is it?
-- **What deterministic checks define "done" for a step?** Build, test,
-  lint, typecheck, link-check, the static-site renderer — whatever
-  proves correctness without a human reading the result. For pure-content
-  projects: the render/lint command plus a fresh reviewer pass against
-  cited source. This becomes the verification gate (§3, §6); without
-  declared checks the gate degenerates to "the reviewer thinks it's
-  fine," which is exactly the silent-failure mode the gate exists to
-  prevent.
+- **What checks define "done" for a step, and how deterministic are
+  they?** For code/UI work: build, test, lint, typecheck, link-check,
+  browser assertions — return-code checks that prove correctness
+  without a human reading the result. For pure-content work: the
+  render/lint command (deterministic) plus a fresh reviewer pass
+  against cited source (a soft, LLM-judged check — surface this to
+  the human plainly, don't dress it up as deterministic). Either way,
+  this becomes the verification gate (§3, §6). Without declared
+  checks the gate degenerates to "the reviewer thinks it's fine,"
+  which is exactly the silent-failure mode the gate exists to
+  prevent — so push to declare *something*, even if part of it is
+  soft.
 - **What reusable skills should the *builder* invoke to self-check
   before declaring `done`?** This is separate from the reviewer's
   gate: the builder running its own checks first means the reviewer
@@ -958,19 +1240,40 @@ them correct it before you build anything.
   `run.py` and in HANDOFF.md.
 - **Mind the limits.** Today this draws from interactive plan limits
   (the rolling five-hour / weekly windows); from 15 June 2026 it draws
-  from the separate monthly Agent SDK credit instead. Parallel tracks
-  multiply window burn proportionally — N concurrent sessions ≈ N× the
-  rate. The runner detects rate-limit errors, parses the reset time
-  from them, and **waits through rolling 5-hour resets** before
-  resuming (§6) — better than wasting a night because the limit was
-  hit an hour before reset. It halts with a note only when the wait
-  would be excessive (typically a weekly cap with reset days away).
-  The planner accounts for window burn when scheduling. "Make the most
-  of the plan," not blow past it.
-- **One git branch per track, plus an integration branch.** Auto-accept
-  edits can't clobber anything outside the overnight branches. The
-  human reviews the integration branch before merging into their own
-  main.
+  from the separate monthly Agent SDK credit instead. **The dollar
+  figure `claude -p` reports is notional** — what those tokens would
+  cost via the API. On a plan it's a useful proxy for "how much work
+  happened," not money spent; the real constraint is the window
+  allotment. Parallel tracks multiply window burn proportionally — N
+  concurrent sessions ≈ N× the rate. The runner can't predict window
+  state from inside Python (the API doesn't expose remaining budget
+  until it refuses); instead it reacts to rate-limit errors — parses
+  the reset time, **waits through rolling 5-hour resets** before
+  resuming (§6.4), and halts with a note only when the wait would be
+  excessive (typically a weekly cap with reset days away). The planner
+  factors observed window pressure into scheduling — backing off
+  parallelism after a recent rate-limit hit, for instance — rather
+  than pretending to know remaining capacity.
+- **One git branch per track, plus an integration branch — and one
+  worktree per concurrently-active track.** Auto-accept edits can't
+  clobber anything outside the overnight branches. Concurrent tracks
+  must run in separate git worktrees (`.overnight/worktrees/<track>/`)
+  because a single working directory can only hold one branch at a
+  time — see §3 and §6 step 2. The human reviews the integration
+  branch before merging into their own main.
+- **Blast radius is git-branch-level, not process-level — be honest
+  about this.** `--permission-mode acceptEdits` plus declared
+  self-check skills (test runners, build commands, browser drivers)
+  means the agents can run arbitrary shell commands overnight,
+  unsupervised. Branch and worktree isolation contains *file
+  damage* (you can throw the branch away), not *command damage* (a
+  test runner that drops a database, a build script that hits a
+  paid API, a `rm` in a postinstall hook). For personal,
+  low-stakes use this is fine; for anything touching production
+  systems, shared infrastructure, or credentials, run inside a real
+  sandbox (container, VM, or a dedicated machine) rather than
+  trusting branch isolation alone. Surface this honestly in HANDOFF.md
+  rather than implying the system is sandboxed when it isn't.
 - **Respect third-party rights.** If the project uses material, assets,
   data, or code the human doesn't own, make sure its licence or
   permission covers the intended use — especially if the output will be
