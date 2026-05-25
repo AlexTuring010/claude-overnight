@@ -71,7 +71,7 @@ where things stand.
 
 ---
 
-## If you need to stop it or check state
+## Operational notes
 
 - **Stop it cleanly while it's running.** `touch .overnight/STOP` from any
   terminal, or Ctrl-C in the runner's terminal, or tell `/overnight` "stop
@@ -85,6 +85,14 @@ where things stand.
   mutations, no sessions spawned — that reports what's definitely done,
   what's partial, what's orphaned, and what the recovery plan is. Same
   thing conversationally: ask `/overnight` "what state are we in?"
+- **Rate limits.** If the runner hits the rolling 5-hour usage window, it
+  parses the reset time from the error and waits idle until the window
+  reopens (plus a small buffer), then resumes automatically — better than
+  wasting a night because the limit was hit an hour before reset. If it
+  hits the weekly cap (where waiting would be days), it halts with a
+  clear note in `wakeup.html` so you can restart when the window opens.
+  Either way, you'll see the state if you check. STOP and KILL still work
+  during the wait.
 
 You don't have to inspect before re-running. A normal
 `python .overnight/run.py` also recovers from partial state on its own

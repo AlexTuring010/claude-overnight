@@ -597,6 +597,32 @@ warning so the human knows. `--inspect` is for when the human wants
 visibility *before* committing to another run; the silent path handles
 the common case where they just want to keep going.
 
+**4. Rate-limit handling.** The Claude plan has a rolling 5-hour usage
+window and a weekly cap (and, from 15 June 2026, a separate monthly
+Agent SDK credit pool — §10). If a `claude -p` call returns a
+rate-limit error, the runner parses the reset time from the response
+and decides:
+
+- If the reset is within `RATE_LIMIT_WAIT_THRESHOLD_HOURS` (default 6,
+  comfortably covering any 5-hour rolling window plus buffer), enter
+  **wait mode**: pause spawning new sessions, let in-flight ones
+  finish if they can, regenerate `wakeup.html` with a clear "waiting
+  for rate-limit reset, resuming at HH:MM" banner, and sleep until
+  reset plus a small buffer. Then resume normally — the next iteration
+  picks up where things stopped, no work lost.
+- If the reset is beyond the threshold (typically a weekly cap hit
+  with reset days away), halt with a clear note in `wakeup.html`.
+  Waiting days idle is wasteful; the human restarts `run.py` when the
+  window opens.
+- During wait mode the runner still polls `STOP`/`KILL` and honours
+  SIGINT/SIGTERM — the human can abandon the wait any time.
+- Every rate-limit event (hit and resumption) is logged to `bus/log/`
+  with the reset timestamp so it's traceable.
+
+This is not about dodging the plan — caps exist for a reason. It's that
+"ran out an hour before reset" should not waste a whole night; the
+runner can wait and continue cleanly.
+
 **External inputs / live feedback (optional).** A project may have a
 source of new work the system should watch — a database of user
 comments, an issue tracker, an inbox. If so, the runner can periodically
@@ -770,12 +796,16 @@ them correct it before you build anything.
   `ANTHROPIC_API_KEY` is NOT set in the shell. Put this check in
   `run.py` and in HANDOFF.md.
 - **Mind the limits.** Today this draws from interactive plan limits
-  (the five-hour / weekly windows); from 15 June 2026 it draws from
-  the separate monthly Agent SDK credit instead. Parallel tracks
-  multiply window burn proportionally — N concurrent sessions ≈ N×
-  the rate. The planner accounts for this when scheduling; the runner
-  halts with a note if a window or cap is exhausted. "Make the most of
-  the plan," not blow past it.
+  (the rolling five-hour / weekly windows); from 15 June 2026 it draws
+  from the separate monthly Agent SDK credit instead. Parallel tracks
+  multiply window burn proportionally — N concurrent sessions ≈ N× the
+  rate. The runner detects rate-limit errors, parses the reset time
+  from them, and **waits through rolling 5-hour resets** before
+  resuming (§6) — better than wasting a night because the limit was
+  hit an hour before reset. It halts with a note only when the wait
+  would be excessive (typically a weekly cap with reset days away).
+  The planner accounts for window burn when scheduling. "Make the most
+  of the plan," not blow past it.
 - **One git branch per track, plus an integration branch.** Auto-accept
   edits can't clobber anything outside the overnight branches. The
   human reviews the integration branch before merging into their own
