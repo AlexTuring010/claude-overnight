@@ -2,19 +2,21 @@
 
 You (Claude Code) are reading the only file in an otherwise empty repository.
 This file is a **seed**, not a spec. Your job in this first conversation is to
-talk with the human, then assemble a small autonomous system that will build
-*their* project (e.g. a university exam-prep study site) phase by phase,
+talk with the human, understand what they want to build, then assemble a small
+autonomous system that builds *that* — whatever it is — phase by phase,
 overnight, on its own. After you assemble it, the human runs one command and
 walks away.
 
-Do **not** start building their actual project. Build the *machine* that builds
-it, and the plan that drives the machine.
+The project could be anything: a web app, a dataset pipeline, a book, a research
+codebase, a content site, a game. Do not assume a domain. Do **not** start
+building their project. Build the *machine* that builds it, and the plan that
+drives the machine.
 
 ---
 
 ## 0. The end state we are assembling
 
-When you are done with this bootstrap conversation, the repo should contain:
+When you finish this bootstrap conversation, the repo should contain:
 
 1. `CLAUDE.md` — project conventions every future session reads automatically.
 2. `ROADMAP.md` — a phased plan that is a **floor, not a ceiling** (see §3).
@@ -32,18 +34,19 @@ freedom is the point — agents are not sandboxed away from each other's work.
 ## 1. How the human uses this (tell them this up front)
 
 > Open this repo in Claude Code and say: "Read START_HERE.md and let's set this
-> up." Answer my questions, look over what I produce, and tweak by talking to me
-> ("did we cover X?", "make the roadmap revisit the formula sheet at the end").
-> You never have to edit the plan yourself unless you want to. When HANDOFF.md
-> appears, you're ready to run it.
+> up." Talk with me about what you're building, look over what I produce, and
+> refine by talking ("did we cover X?", "make the roadmap revisit Y at the
+> end"). You never have to edit the plan yourself unless you want to. When
+> HANDOFF.md appears, you're ready to run.
 
 ---
 
 ## 2. Your job, in order
 
-1. **Interview first (§8).** Do not assume the project. Ask, then confirm a
-   one-paragraph understanding back to the human before writing anything.
-2. **Assemble the artifacts** in §0, grounded in their answers.
+1. **Understand first (§8)** — through conversation, not a form. Don't write
+   anything until you genuinely understand the project and have played your
+   understanding back to the human.
+2. **Assemble the artifacts** in §0, grounded in what you learned.
 3. **Walk the human through it** and revise on their feedback, conversationally.
 4. **Write HANDOFF.md** with the run command and a checklist.
 
@@ -63,13 +66,14 @@ prompts so every future session inherits them.
   add new steps it discovers are needed, reorder what's left, or **revisit and
   redo an earlier step** if reviewing later work exposed a problem. The roadmap
   is a living document the agents maintain, not a fixed track.
-- **Each session leaves the repo in a coherent state** (builds/lints if
-  possible) so the next amnesiac session can pick up safely.
-- **Ground everything in source material.** Never invent course content. A
-  confidently-wrong fact is worse than an admitted gap — this will be a paid
-  product, so correctness beats coverage.
-- **Separate building from reviewing.** The session that built a page must not
-  be the one that signs off on it; a fresh reviewer catches what the builder
+- **Each session leaves the repo in a coherent state** (builds/lints/tests if
+  applicable) so the next amnesiac session can pick up safely.
+- **Stay grounded in the project's source of truth** — its spec, requirements,
+  and any material the human provided. Don't fabricate. An admitted gap is
+  better than a confident error; wrong output erodes trust faster than missing
+  output does.
+- **Separate doing from reviewing.** The session that produced something must
+  not be the one that signs off on it; a fresh reviewer catches what the maker
   rationalised.
 - **Stop safely, never spin.** On ambiguity, exhausted budget, or repeated
   non-progress, halt and leave a clear message for the human rather than looping.
@@ -78,18 +82,20 @@ prompts so every future session inherits them.
 
 ## 4. Agent roles to define (`.claude/agents/`)
 
-Define these as Claude Code subagents. Tune the exact set with the human, but
-the spine is:
+Define these as Claude Code subagents. Tune the exact set with the human — some
+projects want more, some fewer — but the spine is:
 
-- **programmer** — carries the human's intent and taste. Its system prompt is
-  built from the interview: what they're making, who it's for, their quality
+- **principal** — carries the human's intent and taste. Its system prompt is
+  built from your conversation: what they're making, who it's for, their quality
   bar, their preferences and red lines. The runner consults this agent when a
-  *project decision* comes up ("should the formula sheet be its own page or
-  inline?") so choices match what the human would have said, without waking them.
-- **builder** — does one roadmap step: writes/edits the actual project files,
-  grounded in source material, then leaves the repo coherent.
-- **reviewer** — read-only. Checks the last step for correctness against source
-  material and for build/render problems; files issues to the bus, never edits.
+  *project decision* comes up so choices match what the human would have said,
+  without waking them. (Name it for the human's role if that fits better, e.g.
+  "the founder", "the author", "the lead".)
+- **builder** — does one roadmap step: produces/edits the actual project files,
+  grounded in the source of truth, then leaves the repo coherent.
+- **reviewer** — read-only. Checks the last step against the project's
+  requirements and source of truth, and for build/correctness problems; files
+  issues to the bus, never edits.
 - **planner** — owns `ROADMAP.md`. Adds/splits/reorders/reopens steps per §3
   based on what the others report.
 
@@ -135,7 +141,7 @@ Build a Python loop that drives the CLI the human already pays for. Requirements
   printed each loop. Worst case must be "it stopped and left a note," never "it
   ran all night in circles."
 - When a session's control block signals a *project decision* is needed, the
-  runner invokes the **programmer** agent for an answer and feeds it back, rather
+  runner invokes the **principal** agent for an answer and feeds it back, rather
   than waking the human.
 
 ---
@@ -149,20 +155,29 @@ Build a Python loop that drives the CLI the human already pays for. Requirements
 
 ---
 
-## 8. The interview (ask before building anything)
+## 8. Understand the project — through conversation, not a checklist
 
-Ask these, then confirm understanding back before you write a line:
+Do **not** fire a fixed list of questions and tick boxes. Have a real
+conversation. Your goal is genuine understanding of what the human wants and how
+they'd judge it, and *you* decide when you have it: ask follow-ups, dig into
+vague answers, surface tradeoffs, propose options and react to their taste, let
+them lead and follow the threads that matter to them. A short, unusual project
+needs different questions than a large one — adapt.
 
-1. What exactly are we building? (e.g. a study site for which course/university;
-   point me at the source material — slides, past papers — and where it lives.)
-2. Who is it for and what does "good" look like to you? Your quality bar, your
-   non-negotiables, your taste (tone, depth, visual style)?
-3. What should the **programmer** agent decide on your behalf, and what must
-   always come back to you?
-4. Tech stack and repo for the output (e.g. an existing Next.js project to clone
-   in, or start fresh)?
-5. How hands-off do you want it — fully autonomous within caps, or pause at
-   phase boundaries for your okay?
+You are ready to move on only when you could honestly answer, in the human's own
+voice, things like:
+
+- What are we building, and what do "done" and "good" look like to them?
+- What is the source of truth the work must stay grounded in, and where is it?
+- Which decisions should the principal agent make on their behalf, and which
+  must always come back to them?
+- Where does the output live — stack, repo, fresh or existing?
+- How autonomous do they want it — full runs within caps, or pauses at checkpoints?
+
+Treat that as the understanding you need, not a script to read aloud — and
+expect to need more for any project that doesn't fit the mould. When you believe
+you understand, play back a one-paragraph summary and let them correct it before
+you build anything.
 
 ---
 
@@ -177,14 +192,15 @@ Ask these, then confirm understanding back before you write a line:
   inside what they're paying for — "make the most of the plan," not blow past it.
 - **Always run on a dedicated git branch** so auto-accept edits can't clobber
   anything; the human reviews diffs before merging.
-- **Source material is the lecturer's.** Fine for personal/educational use; if
-  this becomes a paid product, prefer original explanations + the human's own
-  past-paper analysis over reproducing lecture content, and flag that in HANDOFF.
-- **For others, not just you:** if the human ever points this at running on
-  behalf of paying customers, that crosses into territory their plan doesn't
+- **Respect third-party rights.** If the project uses material, assets, data, or
+  code the human doesn't own, make sure its licence or permission covers the
+  intended use — especially if the output will be sold or published. Flag any
+  uncertainty in HANDOFF rather than quietly assuming it's fine.
+- **For others, not just them:** if the human ever points this at running on
+  behalf of paying customers, that crosses into territory their plan may not
   cover — surface it, don't silently do it.
 
 ---
 
-*Begin by greeting the human and starting the interview in §8. Build the machine,
-not the project.*
+*Begin by greeting the human and getting into the conversation in §8. Build the
+machine, not the project.*

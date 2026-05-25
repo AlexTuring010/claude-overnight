@@ -4,20 +4,21 @@ This repo doesn't contain a build system. It contains a **seed** that builds one
 *for you*, by talking to you.
 
 You drop it into a project, open it in Claude Code, and have a conversation.
-Claude interviews you about what you're making, then assembles the whole
-machine — a phased roadmap, a set of agents (including one that carries your
-intent and makes decisions on your behalf), a file-based message bus they
-coordinate through, and a runner. When it's done, you start one command and walk
-away, and it builds your project phase by phase, overnight, on its own.
+Claude works out what you're building — anything: a web app, a dataset pipeline,
+a book, a research codebase, a game — then assembles the whole machine: a phased
+roadmap, a set of agents (including one that carries your intent and makes
+decisions on your behalf), a file-based message bus they coordinate through, and
+a runner. When it's done, you start one command and walk away, and it builds your
+project phase by phase, overnight, on its own.
 
 The point: you never hand-write the plan. You discuss it. The system sets
 itself up.
 
 ## What's in here
 
-- **`START_HERE.md`** — the seed. Everything Claude needs to interview you and
-  assemble the system. This is the only file that matters at the start; the rest
-  gets generated.
+- **`START_HERE.md`** — the seed. Everything Claude needs to understand your
+  project and assemble the system. This is the only file that matters at the
+  start; the rest gets generated.
 
 After the bootstrap conversation, Claude will have created `CLAUDE.md`, a living
 `ROADMAP.md`, `.claude/agents/`, a `bus/` message board, `run.py`, and a
@@ -36,14 +37,15 @@ After the bootstrap conversation, Claude will have created `CLAUDE.md`, a living
 Put `START_HERE.md` in the repo, open it in Claude Code, and send this:
 
 ```
-Read START_HERE.md. Don't build my project yet — follow it: interview me first,
-confirm what you understood, then assemble the system. Let's begin.
+Read START_HERE.md. Don't build my project yet — follow it: talk with me to
+understand what I'm making, play back what you understood, then assemble the
+system. Let's begin.
 ```
 
-From there, just answer Claude's questions and look over what it makes. You can
-refine anything by talking to it ("did we cover the formula sheet?", "make the
-roadmap revisit the past-paper analysis at the end") — you shouldn't need to edit
-the plan by hand. When `HANDOFF.md` appears, you're ready to run.
+From there, just talk it through and look over what it makes. You can refine
+anything by discussing it ("did we cover X?", "have the roadmap revisit Y near
+the end") — you shouldn't need to edit the plan by hand. When `HANDOFF.md`
+appears, you're ready to run.
 
 ## What running it looks like
 
