@@ -35,9 +35,15 @@ productive), and cleans itself back out when you're done.
    assemble the system. Let's begin.
    ```
 
-3. Talk it through. Claude asks a few questions, plays back what it understood,
-   and assembles the system. Refine by talking — "did we cover X?", "make it
-   revisit Y at the end."
+3. Talk it through. Setup happens across **2-3 short sessions** with a
+   `/clear` between each — first you scope the goal with Claude (one
+   conversation, fine for it to be long), then `/clear` and Claude
+   plans the build in a fresh session, then `/clear` and Claude builds
+   the system using fresh subagents per piece. Claude explains the
+   why and tells you exactly what to paste at each handoff. The reason
+   is the same one that makes the overnight loop work: fresh context
+   per step. Refine by talking at any phase — "did we cover X?", "make
+   it revisit Y at the end."
 4. When **`HANDOFF.md`** appears, you're ready. It contains the single command
    to start the overnight run.
 

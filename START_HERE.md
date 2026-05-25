@@ -44,6 +44,8 @@ project and removes cleanly.
 │  ├─ run.py                    # install-level: the runner (§6)
 │  ├─ manifest.json             # install-level: every path the system created (§11)
 │  ├─ HANDOFF.md                # install-level: written last — what was built + how to run (§8)
+│  ├─ INTENT.md                 # goal-level: captured human intent for this goal (§2 Phase A)
+│  ├─ BUILD_PLAN.md             # goal-level: system-construction roadmap (§2 Phase B)
 │  ├─ wakeup.html               # goal-level: morning digest, regenerated each iteration (§7)
 │  ├─ ROADMAP.md                # goal-level: the current goal's plan, organised by track (§3, §4)
 │  └─ bus/                      # goal-level: agent coordination (§5)
@@ -60,9 +62,9 @@ project and removes cleanly.
 
 `CLAUDE.md` is **not** in this list — the system never touches it (see rule 3).
 Note the split: **install-level** files persist across goals (the runner, the
-command, the agents, orientation, manifest); **goal-level** files (ROADMAP,
-bus, wakeup.html) belong to the current goal and are archived + reset when a
-goal completes (§11).
+command, the agents, orientation, manifest); **goal-level** files (INTENT,
+BUILD_PLAN, ROADMAP, bus, wakeup.html) belong to the current goal and are
+archived + reset when a goal completes (§11).
 
 Paths in this file are written relative to the project root. Everything the
 system owns sits under `.overnight/` (so `ROADMAP.md`, `run.py`, `bus/`,
@@ -175,55 +177,158 @@ recorded somewhere the human can always find it. The command and the
 prompt do the same thing; neither is load-bearing on its own.
 
 > Quick start for the human: "Read START_HERE.md and let's set this up."
-> I'll explain what this is, we'll scope the goal together, and I'll build
-> it. After that: run it with `python .overnight/run.py`; read each
-> morning at `.overnight/wakeup.html`; talk to it any time with
-> `/overnight` then plain conversation.
+> I'll explain what this is, we'll scope the goal together across **2-3
+> short sessions** (a `/clear` between each, for the same reason the
+> overnight runtime uses fresh context per step — I'll explain when
+> we get there), then the system gets built. After that: run it with
+> `python .overnight/run.py`; read each morning at
+> `.overnight/wakeup.html`; talk to it any time with `/overnight` then
+> plain conversation.
 
 ---
 
-## 2. Your job, in order
+## 2. Your job, in order — three phases, two `/clear` boundaries
 
-0. **Get your bearings.** If the directory isn't empty, survey it first —
-   read the README, manifests, structure, recent git history — and form an
-   honest picture of the existing project before proposing anything. **If
-   an `.overnight/` install already exists** (from previous goals), do not
-   clobber it: load its state, recognise this as a returning install, and
-   jump to the §11 re-entry behaviour — resume an active goal, or if none
-   is active, ask whether to review past goals or set up a new one. Check
-   the archive (§11) too: a similar past goal is reference material.
+Setup happens across **three sessions, not one**. This is deliberate:
+the overnight runtime enforces fresh context per step (§3) because
+polluted context produces measurably worse work. The same is true of
+the setup that *builds* the runtime. A single ever-filling session
+would assemble the agent prompts, orientation, and roadmap with the
+whole noisy conversation loaded — and every overnight night thereafter
+would inherit that drift. The bootstrap session is upstream of every
+night; its quality multiplies.
+
+So split: long conversation in Phase A (fine, that's where nuance
+lives), then `/clear`, focused planning in Phase B, then `/clear`,
+then the build in Phase C using fresh subagents per artifact. Two
+`/clear` boundaries, three phases. **Explain this to the human upfront
+in Phase A** — same principle that makes overnight work, applied to
+setup — so the `/clear` when it comes is expected, not jarring.
+
+### Phase A — Intent (this session, conversational)
+
+0. **Get your bearings.** If the directory isn't empty, survey it first
+   — read the README, manifests, structure, recent git history — and
+   form an honest picture of the existing project before proposing
+   anything. **If an `.overnight/` install already exists** (from
+   previous goals), do not clobber it: load its state, recognise this
+   as a returning install, and jump to the §11 re-entry behaviour —
+   resume an active goal, or if none is active, ask whether to review
+   past goals or set up a new one. Check the archive (§11) too: a
+   similar past goal is reference material.
 
 1. **Welcome and orient the human.** Assume they're new to this — they
-   likely grabbed this file to try it out and have no idea what it sets
-   up. Before any questions, explain in plain language, in your own
-   words: what this is (a system that will work on one goal
+   likely grabbed this file to try it out and have no idea what it
+   sets up. Before any questions, explain in plain language, in your
+   own words: what this is (a system that will work on one goal
    autonomously, overnight, on one or more parallel tracks), what the
-   two of you are about to do together (scope the goal, then you
-   assemble the machine), roughly how it'll work afterward (it runs
-   while they're away; they read `wakeup.html` in the morning; they
-   talk to it or run it; they can stop and finish it any time), and set
-   honest expectations (it's powerful but the first run wants
-   supervision; it uses their Claude plan within caps; **it will hold
-   the line on quality over speed**). Keep it short and human, check
-   they're comfortable, invite questions — then ease into the
-   conversation. Don't interrogate a stranger; bring them in.
+   two of you are about to do together (**scope the goal in this
+   session, then `/clear` and build the system across two more short
+   sessions — say this now, briefly explain why: same fresh-context
+   principle the overnight runtime uses**), roughly how it'll work
+   afterward (it runs while they're away; they read `wakeup.html` in
+   the morning; they talk to it or run it; they can stop and finish
+   it any time), and set honest expectations (it's powerful but the
+   first run wants supervision; it uses their Claude plan within
+   caps; **it will hold the line on quality over speed**). Keep it
+   short and human, check they're comfortable, invite questions —
+   then ease into the conversation. Don't interrogate a stranger;
+   bring them in.
 
 2. **Understand the goal (§9)** — through conversation, not a form.
    Don't write anything until you genuinely understand the goal and
    have played your understanding back to the human.
 
-3. **Assemble the apparatus** (§0): the install-level pieces (the
-   `/overnight` command, `orientation.md`, the runner, the agents) and
-   the goal-level pieces (ROADMAP organised by track, the bus including
-   the decisions log and the corrections feedback file, `wakeup.html`),
-   contained and tracked in `manifest.json`.
+3. **Write `.overnight/INTENT.md`** — the single artifact Phases B
+   and C will read. Capture everything downstream needs in dense,
+   reviewable form: goal; what "done" and "good" look like; source
+   of truth; declared verification checks; builder self-check skills
+   (§9); track structure hint; principal profile (taste, red lines,
+   what they can decide on the human's behalf); git/archive choices;
+   existing-project constraints. Play it back to the human; let them
+   correct it. **Quality of INTENT.md matters more than quality of
+   the conversation that produced it** — it's the bridge into clean
+   context.
 
-4. **Walk the human through it** and revise on their feedback,
-   conversationally.
+4. **Hand off to Phase B.** Tell the human:
+   > "Intent captured in `.overnight/INTENT.md`. Now `/clear` this
+   > session and paste this in the fresh session — that one plans the
+   > build in clean context, same principle that makes overnight
+   > work:
+   >
+   > `Read .overnight/INTENT.md and START_HERE.md §2 Phase B, then
+   > produce .overnight/BUILD_PLAN.md and stop for review.`"
 
-5. **Write `.overnight/HANDOFF.md`** — what was built, the run command,
-   the `wakeup.html` path, the `/overnight` command, and how to finish
-   (§8).
+   Stop here. Do not begin Phase B in this session.
+
+### Phase B — Build plan (fresh session after `/clear`, short)
+
+The human pastes the kickoff line above. You enter this phase with no
+memory of Phase A — that's the point. Read `.overnight/INTENT.md` and
+this section, then:
+
+1. **Read INTENT.md carefully.** If anything is missing, contradictory,
+   or unclear, write the gaps to `.overnight/INTENT_QUESTIONS.md` and
+   stop — do not barrel through. The human will reload Phase A briefly
+   to answer; better one extra session than a build founded on a
+   guess.
+
+2. **Produce `.overnight/BUILD_PLAN.md`** — the system-construction
+   roadmap. One step per significant artifact: `orientation.md`, each
+   agent prompt (principal, builder, reviewer, planner — and any
+   domain-specific agents the goal needs), `run.py`, `ROADMAP.md` (the
+   *goal's* roadmap, not this one), the `/overnight` command,
+   `manifest.json`, `HANDOFF.md`. Each step has a short brief, the
+   inputs to read (INTENT.md plus any already-built artifacts that
+   this step depends on), the output path, and `status: pending`.
+   Order steps so each can be built reading only earlier outputs.
+
+3. **Play back the build plan.** Let the human reorder, drop, or add
+   steps before Phase C builds anything.
+
+4. **Hand off to Phase C.** Tell the human:
+   > "Build plan in `.overnight/BUILD_PLAN.md`. Now `/clear` and paste
+   > this — the build itself happens in that session, using fresh
+   > subagents per artifact so each piece gets clean context:
+   >
+   > `Read .overnight/INTENT.md and .overnight/BUILD_PLAN.md and
+   > START_HERE.md §2 Phase C, then build the system.`"
+
+   Stop here.
+
+### Phase C — Build (fresh session after `/clear`)
+
+The human pastes the kickoff line. You enter with no memory of Phase
+A or B. Read INTENT, BUILD_PLAN, and this section, then:
+
+1. **Take stock.** Check which BUILD_PLAN steps are already `done`
+   (so re-entering this session after an interruption resumes
+   correctly).
+
+2. **For each pending step, dispatch a fresh subagent** (Task tool,
+   `general-purpose` is fine) with a self-contained brief: "Read
+   `.overnight/INTENT.md`, `.overnight/BUILD_PLAN.md`, and these
+   already-produced artifacts: [paths]. Build only the step's named
+   artifact at the declared output path. Return that path plus a
+   one-paragraph summary of what you wrote and any assumptions you
+   made." The parent (this session) orchestrates; the subagent
+   authors each piece in a clean context. This is what avoids forcing
+   the human into a `/clear` marathon — the freshness happens inside
+   the Task call, not at the human's prompt.
+
+3. **After each subagent returns**, mark the step `done` in
+   BUILD_PLAN.md, record the path in `manifest.json`, and dispatch
+   the next step. Spot-check the output before moving on — if a
+   subagent produced something off-spec, fix it (or re-dispatch with
+   a sharper brief) before the next step reads it.
+
+4. **Walk the human through what got built** when all steps complete.
+   Revise on their feedback — small tweaks in this Phase C session
+   are fine; if they want to rethink intent, route them back to Phase
+   A (`/clear` and re-scope).
+
+5. **Write `.overnight/HANDOFF.md`** (§8) — what was built, the run
+   command, `wakeup.html` path, `/overnight` command, how to finish.
 
 ---
 
@@ -278,7 +383,17 @@ These are hard-won; encode them into `.overnight/orientation.md`,
   turned out too big, add new steps it discovers are needed, reorder
   what's left, or **revisit and redo an earlier step** if reviewing
   later work exposed a problem. The roadmap is a living document the
-  planner maintains, not a fixed track.
+  planner maintains, not a fixed track. The planner also
+  **annotates** steps with what later sessions will need to know:
+  when an agent discovers something nonobvious that will matter for
+  step M, the planner adds a one-line pointer under step M (e.g.
+  *"Note from step-3: see `bus/log/...` — tests skip silently
+  without `POSTGRES_TEST_URL`"*). Truly cross-cutting discoveries go
+  into a *Standing notes* section at the top of `ROADMAP.md`;
+  install-level ones (project conventions that outlive the goal) get
+  folded into `orientation.md` on the next build so future goals
+  inherit them. Pointers, not copies — the full reasoning stays in
+  the source session log.
 
 - **One goal can have many tracks; the planner schedules them.** The
   roadmap is organised into one or more *tracks* — workstreams that
@@ -306,10 +421,23 @@ These are hard-won; encode them into `.overnight/orientation.md`,
   project's declared checks pass — build / tests / lint / typecheck /
   render, elicited in the interview (§9). The reviewer runs them
   after every builder `done`; failure routes the step back to the
-  planner as `blocked`, never silently accepted. For pure-content
-  projects, the gate is "the artifact builds without errors AND a
+  planner as `blocked`, never silently accepted. For **pure-content
+  projects**, the gate is "the artifact builds without errors AND a
   fresh reviewer session finds no factual gaps against cited source
-  material."
+  material." For **UI projects**, the gate additionally includes
+  browser-level verification of acceptance criteria — not just
+  typecheck/build/lint — using a project-declared browser skill (e.g.
+  `dev-browser`, Playwright). "Works in the browser" is part of the
+  gate, not a bonus.
+
+- **Builder self-checks before declaring `done`.** The builder may
+  (and for UI/integration work, should) invoke project-declared
+  verification skills — test runners, browser drivers, link
+  checkers — *itself* before handing off, so the reviewer's pass
+  starts from already-checked work. This tightens the loop: the
+  reviewer confirms rather than discovers, and ping-pong between
+  builder and reviewer drops. The reviewer still runs the
+  authoritative gate, but it should mostly agree.
 
 - **Each session leaves its track in a coherent state**
   (builds/lints/tests if applicable) so the next amnesiac session can
@@ -354,7 +482,10 @@ some projects want more, some fewer — but the spine is:
 - **builder** — does one roadmap step on one track: produces/edits the
   actual project files within that track's declared write scope, grounded
   in the source of truth and citing where claims came from, then leaves
-  its track coherent. Cannot write outside its scope.
+  its track coherent. Cannot write outside its scope. **Invokes
+  project-declared self-check skills** (test runners, browser drivers,
+  link checkers — defined in §9) before declaring `done`, so the
+  reviewer's gate confirms rather than discovers.
 
 - **reviewer** — read-only on project files; **runs the project's
   declared checks** (build/test/lint/typecheck/render) as part of
@@ -372,7 +503,13 @@ some projects want more, some fewer — but the spine is:
   the runner executes**: for each track either `{track, step_id, prompt,
   scope}` (advance), `idle` (nothing to advance right now), or `done`.
   The runner asks the planner what's next at every iteration boundary
-  and runs whatever it says.
+  and runs whatever it says. **Curates discoveries into the roadmap**:
+  when a control block's `next_hint` surfaces something nonobvious
+  that will matter for later steps, the planner annotates the
+  relevant step (or the Standing notes, or promotes it to
+  `orientation.md` on the next build) rather than letting the
+  learning live only in the session log. Filters as it goes — not
+  every hint is worth recording.
 
 The planner subsumes what some projects might split into a separate
 "orchestrator" — having one agent own both the roadmap and the schedule
@@ -385,8 +522,8 @@ not just intent.** The restriction is what makes the separation real;
 without it "reviewer is read-only" is just a wish.
 
 - builder: read everything; write only within its track's declared write
-  scope; may run build/test commands to self-check before declaring
-  `done`.
+  scope; may run project-declared self-check skills (build/test/browser/
+  link-check — see §9) before declaring `done`.
 - reviewer: read everything; execute the project's declared checks;
   write only inside `bus/`.
 - planner: read everything; write to `ROADMAP.md`, `bus/state.json`, and
@@ -489,7 +626,8 @@ comes from an agent via the control block.
      "agent": "builder",
      "checks_passed": true,
      "summary": "...",
-     "next_hint": "optional hint for the planner",
+     "next_hint": "optional hint for the planner — also where the agent surfaces nonobvious discoveries that may matter for later steps (e.g. 'gotcha: tests skip silently without POSTGRES_TEST_URL — may matter for step-7') so the planner can annotate them in ROADMAP.md per §3",
+     "decision_question": "required when status is needs-decision: the exact question to put to the principal, phrased so a yes/no or a short choice answers it",
      "reason": "..."
    }
    ```
@@ -673,9 +811,15 @@ to `bus/intent-corrections.md`, not here.
    decision made, rationale, track, timestamp. The user scans in
    seconds; flagging a wrong decision means writing into
    `bus/intent-corrections.md` (usually via `/overnight`).
-5. **Open review items / blocks / stalls.** Anything that didn't close
+5. **Notes the planner added this run.** One-line entries for each
+   roadmap annotation the planner wrote since the last digest — the
+   discovery in a sentence, which step (or Standing notes section)
+   it was filed under, link to the source `bus/log/...` for the full
+   reasoning. Lets the human see what the system is figuring out
+   without diffing `ROADMAP.md`.
+6. **Open review items / blocks / stalls.** Anything that didn't close
    cleanly, with a one-line "what the planner intends to try next."
-6. **Cost-per-step bars.** Simple inline-SVG bar chart. Surfaces runaway
+7. **Cost-per-step bars.** Simple inline-SVG bar chart. Surfaces runaway
    steps before they eat tomorrow night.
 
 The digest is the human's morning interface to the system. Treat it as
@@ -688,9 +832,16 @@ give up on reading it and the loop closes badly.
 
 - One paragraph: what got assembled, what the goal is, which tracks were
   identified, what deterministic checks were declared.
-- A checklist for the human: skim `.overnight/ROADMAP.md` (and its
-  per-track organisation), the agent prompts, the declared check
-  commands.
+- A checklist for the human, **especially before the first run** (and
+  worth re-skimming before any night that follows a significant
+  re-scoping): *read* — don't just skim — each step on the first track
+  in `.overnight/ROADMAP.md`; confirm the principal agent's profile
+  matches your taste and red lines; read the declared check commands;
+  glance at the runner caps (iterations, USD, step visits). The first
+  night's quality depends on these being right — five minutes here
+  saves a night of wrong-shape work, and the agents will be running
+  this same plan in clean contexts without you, so anything that's
+  wrong in writing will be wrong in execution.
 - **Run it:** `python .overnight/run.py` — the overnight loop.
 - **Stop it cleanly:** `touch .overnight/STOP` from any terminal, or
   Ctrl-C in the runner's terminal, or tell `/overnight` "stop after
@@ -761,6 +912,16 @@ human's own voice, things like:
   declared checks the gate degenerates to "the reviewer thinks it's
   fine," which is exactly the silent-failure mode the gate exists to
   prevent.
+- **What reusable skills should the *builder* invoke to self-check
+  before declaring `done`?** This is separate from the reviewer's
+  gate: the builder running its own checks first means the reviewer
+  confirms rather than discovers, which tightens the loop and cuts
+  ping-pong. For UI goals especially, this means wiring in a browser
+  skill (Playwright, `dev-browser`) so "works in the browser" is part
+  of the builder's promise, not only the reviewer's audit. For
+  backend or library work it's typically the project's test runner
+  plus typecheck. List the commands or skill names; they go into the
+  builder agent's prompt and tool list (§4).
 - **Are there natural tracks the goal splits into** (e.g. infra /
   content / design), and do they want parallel advancement where safe?
   Parallel burns through the 5-hour plan window faster — N concurrent
@@ -859,6 +1020,17 @@ then:
   archive) or scope a new one. If they pick a new goal, run the same
   scoping conversation (§9) and assemble fresh goal-level files,
   reusing the archive as reference (below).
+
+Either way, **the three-phase model from §2 applies to scoping the
+new goal** — Phase A in this session for intent, `/clear`, Phase B
+for the build plan, `/clear`, Phase C for the build. The install
+pieces (runner, `/overnight` command, agents, orientation,
+manifest) already exist and don't get rebuilt; BUILD_PLAN.md is
+typically smaller this time, mostly the new goal-level files
+(INTENT.md, ROADMAP.md, a refreshed principal profile if the domain
+shifted, a refreshed HANDOFF.md). Skipping the `/clear` boundaries
+to save a session would re-introduce exactly the upstream-context
+drift §2 exists to prevent — don't.
 
 **Reuse across goals.** When the human says "remember that goal we did?
 let's do something similar, but this time…", read the relevant archived
