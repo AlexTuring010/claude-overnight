@@ -1,15 +1,22 @@
 # Overnight Builder
 
-You've got a goal — a personal blog, a careful rewrite of your study notes, a
-feature in an existing app — and you don't want to sit at the screen telling
-Claude "next step, next step" all day. This repo is a **seed**: drop it into
-your project, talk through the goal with Claude, and it assembles the
-roadmap, agents, and runner needed to execute it autonomously — step by step,
-on one or more parallel tracks where that's safe, while you sleep.
+You've got a goal — a personal blog, a careful rewrite of your study notes,
+a feature in an existing app — and you'd like real progress on it overnight.
+The obvious version is "tell one Claude session to work on the goal and walk
+away." That drifts: context fills over hours and quality degrades, the
+session that produced a step is the one that signs off on it, a rate-limit
+error mid-night kills the run, and you wake up to something shallow shipped
+to look productive.
 
-You never hand-write the plan — you discuss it. The system handles one goal
-end-to-end, holds the line on quality (never ships shallow to look
-productive), and cleans itself back out when you're done.
+This repo is a **seed**. Drop it into your project, talk through the goal
+with Claude, and it assembles a small system tuned to *that* goal — not a
+generic bot. The assembled system runs each step in a fresh session (no
+drift), has a separate reviewer agent that signs off against real declared
+checks (build, tests, render — not vibes), waits through 5-hour rate-limit
+resets instead of dying, and halts with a clear note rather than shipping
+shallow work. You never hand-write the plan — you discuss it. In the
+morning you read a digest, adjust by talking, run again — and when the goal
+is done it archives what it learned and cleans itself back out.
 
 ---
 
