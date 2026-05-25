@@ -3,12 +3,13 @@
 You've got a goal — a personal blog, a careful rewrite of your study notes, a
 feature in an existing app — and you don't want to sit at the screen telling
 Claude "next step, next step" all day. This repo is a **seed**: drop it into
-your project, talk through the goal with Claude, and it assembles the roadmap,
-agents, and runner needed to execute it autonomously, phase by phase, while
-you sleep.
+your project, talk through the goal with Claude, and it assembles the
+roadmap, agents, and runner needed to execute it autonomously — step by step,
+on one or more parallel tracks where that's safe, while you sleep.
 
 You never hand-write the plan — you discuss it. The system handles one goal
-end-to-end, then cleans itself back out when you're done.
+end-to-end, holds the line on quality (never ships shallow to look
+productive), and cleans itself back out when you're done.
 
 ---
 
@@ -45,18 +46,24 @@ explains as it goes and offers a sensible default for every choice.
 
 ---
 
-## After setup: two ways to interact
+## After setup: three ways to interact
 
 - **Run it (headless):** `python .overnight/run.py` — the autonomous overnight
-  loop. Start it and walk away.
+  loop. Start it and walk away. Nothing waits on your approval mid-run.
+- **Read what happened:** open `.overnight/wakeup.html` in your browser each
+  morning. A self-contained read-only page with per-track status, steps closed
+  overnight, the decisions Claude made on your behalf, open blockers, and
+  cost-per-step. Scannable in a minute — no log archaeology.
 - **Talk to it (interactive):** open `claude` in the repo and run the
   **`/overnight`** slash command. That loads the system's context; after that
-  you just talk. "How's it going?", "bias toward more detail", "I think we're
-  done with this goal" — it understands all of it. No other commands to remember.
+  you just talk. "How's it going?", "bias toward more detail", "the call on Y
+  was wrong, correct it", "I think we're done with this goal" — it
+  understands all of it. No other commands to remember.
 
-  *If `/overnight` isn't available* (or your editor doesn't show it), paste this
-  instead: `Read .overnight/orientation.md and .overnight/bus/state.json, then
-  act as the overnight system.` Same effect — the command is only a shortcut.
+  *If `/overnight` isn't available* (or your editor doesn't show it), paste
+  this instead: `Read .overnight/orientation.md and .overnight/bus/state.json,
+  then act as the overnight system.` Same effect — the command is only a
+  shortcut.
 
 The system stays dormant between sessions — no persistent process holds a
 conversation in memory. State lives in files; a session reads them to know
@@ -64,18 +71,44 @@ where things stand.
 
 ---
 
+## If you need to stop it or check state
+
+- **Stop it cleanly while it's running.** `touch .overnight/STOP` from any
+  terminal, or Ctrl-C in the runner's terminal, or tell `/overnight` "stop
+  after this iteration." All three finish the in-flight iteration, write
+  the morning digest, and exit cleanly. If graceful stop ever hangs:
+  `touch .overnight/KILL` or hit Ctrl-C twice within 5 seconds — partial
+  steps recover on the next run.
+- **No idea what state things are in?** Laptop died overnight, terminal
+  crashed, woke up to an ambiguous repo: run
+  `python .overnight/run.py --inspect`. It's a read-only diagnostic — no
+  mutations, no sessions spawned — that reports what's definitely done,
+  what's partial, what's orphaned, and what the recovery plan is. Same
+  thing conversationally: ask `/overnight` "what state are we in?"
+
+You don't have to inspect before re-running. A normal
+`python .overnight/run.py` also recovers from partial state on its own
+(detects orphans, marks them, asks the planner to re-plan). `--inspect`
+is for when you want to see the diagnosis *before* committing to another
+overnight run.
+
+---
+
 ## One goal at a time
 
-You come to this with a goal — a blog, a rewrite, a feature in an existing app.
-You don't have to break it into pieces up front; the conversation with Claude
-figures out the shape, and the system handles one goal end-to-end.
+You come to this with a goal — a blog, a rewrite, a feature in an existing
+app. You don't have to break it into pieces up front; the conversation with
+Claude figures out the shape, including whether the work naturally splits
+into parallel tracks (e.g. infra / content / design) that can advance
+independently overnight. The system handles one goal end-to-end, on one
+track or many, whichever quality calls for.
 
 A goal usually takes a few overnight runs to finish: set it up, let it run,
-review in the morning, adjust by talking, run again. When you tell Claude the
-goal is done (just say so), it archives what it learned — what worked, what
-didn't — and resets, leaving your project as it was plus the work it produced.
-Next time you bring a new goal, it reads that archive and reuses the lessons
-instead of starting from zero.
+read `wakeup.html` in the morning, adjust by talking, run again. When you
+tell Claude the goal is done (just say so), it archives what it learned —
+what worked, what didn't — and resets, leaving your project as it was plus
+the work it produced. Next time you bring a new goal, it reads that archive
+and reuses the lessons instead of starting from zero.
 
 ## How it stays out of your project
 
