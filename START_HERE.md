@@ -36,10 +36,10 @@ of this.
 
 ## 0. The end state we are assembling
 
-When you finish this bootstrap conversation, the apparatus exists as a
-**specific, self-contained structure** — not scattered files. This exact
-layout is the system; follow it so it stays walled off from the human's
-project and removes cleanly.
+When the bootstrap finishes (across Phases A → B → C in §2), the apparatus
+exists as a **specific, self-contained structure** — not scattered files.
+This exact layout is the system; follow it so it stays walled off from the
+human's project and removes cleanly.
 
 ```
 <project>/
@@ -205,8 +205,8 @@ polluted context produces measurably worse work. The same is true of
 the setup that *builds* the runtime. A single ever-filling session
 would assemble the agent prompts, orientation, and roadmap with the
 whole noisy conversation loaded — and every overnight night thereafter
-would inherit that drift. The bootstrap session is upstream of every
-night; its quality multiplies.
+would inherit that drift. Bootstrap is upstream of every night; its
+quality multiplies.
 
 So split: long conversation in Phase A (fine, that's where nuance
 lives), then `/clear`, focused planning in Phase B, then `/clear`,
