@@ -576,6 +576,24 @@ These are hard-won; encode them into `.overnight/orientation.md`,
   (builds/lints/tests if applicable) so the next amnesiac session can
   pick up safely.
 
+- **Refactor coherently, never partially.** When a step changes a
+  load-bearing concept — bootstrap structure, bus schema, a track's
+  scope, the verification gate's shape, an agent prompt, an
+  `orientation.md` Standing note, anything other code or prose
+  references — it isn't `done` until every reference to the old
+  shape has been swept and updated. The reviewer catches broken
+  builds; it does not natively catch prose still describing the
+  world before the change. After any substantive change, the agent
+  that made it (or the planner, scheduling the follow-up) greps the
+  affected scope for references to the old model and either fixes
+  them in-step or files them as follow-up steps. A locally-correct,
+  globally-incoherent edit is one of the most common LLM failure
+  modes — bake the sweep in rather than hoping a future reviewer
+  notices. The sweep can be expensive when the change is broad; do
+  it anyway. Incoherence compounds across every future session that
+  reads it, and that compounding is exactly the failure the
+  quality-first principle exists to prevent.
+
 - **Stay grounded in the project's source of truth** — its spec,
   requirements, and any material the human provided. Don't fabricate.
   An admitted gap is better than a confident error; wrong output erodes
@@ -606,8 +624,9 @@ Treat it as a content-spec'd artifact, not a free-form briefing.
 2. **The principles above** — verbatim or tightly condensed, all
    of them. Quality-first, no-HITL-overnight, intelligence-in-
    agents-not-runner, one-task-per-session, the honest
-   verification-gate tiers, stop-safely. Drop any and future
-   sessions inherit a diluted version.
+   verification-gate tiers, refactor-coherently-never-partially,
+   stop-safely. Drop any and future sessions inherit a diluted
+   version.
 3. **Bus layout** — what each file under `bus/` does, what
    `state.json` contains, how a session reads its inbox and
    writes its log entry.
