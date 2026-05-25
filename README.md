@@ -89,9 +89,13 @@ It's built to live inside a project you care about without contaminating it:
   are `overnight-` prefixed and recorded in a manifest.
 - Your **`CLAUDE.md` is never touched** — orientation lives in the system's
   own folder, not in your project's instructions.
-- **Archives live outside the repo** (default
-  `~/.overnight/archive/<project>/<goal>/`, or wherever you choose at setup),
-  so past work never enters any project's git and can be reused across projects.
+- **Archives live in one central spot across projects** (default
+  `~/.overnight/archive/<project>/<goal>/`; setup asks where you want it). That
+  keeps git noise out of any single project and lets lessons from one archive
+  inform a future project's setup. If you want archives to sync across
+  machines, point the directory at Dropbox / iCloud / OneDrive or a separate
+  git repo you keep just for archives — both work better than burying it
+  inside the project repo.
 
 When a goal is done you can keep the system installed for the next one, or have
 it uninstall completely — the manifest lets it delete precisely what it added,
