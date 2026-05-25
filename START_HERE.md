@@ -47,6 +47,7 @@ human's project and removes cleanly.
 │  ├─ orientation.md            # install-level: the briefing a session loads to enter context (§1)
 │  ├─ run.py                    # install-level: the runner (§6)
 │  ├─ manifest.json             # install-level: every path the system created (§11)
+│  ├─ config.json               # install-level: model/effort policy + per-role defaults (§9; user-editable any time)
 │  ├─ HANDOFF.md                # install-level: written last — what was built + how to run (§8)
 │  ├─ NEXT.md                   # bootstrap-transient: kickoff line for the next /clear handoff; deleted after Phase C (§2)
 │  ├─ INTENT.md                 # goal-level: captured human intent for this goal (§2 Phase A)
@@ -155,6 +156,12 @@ language:
   steps (and which tracks are active).
 - "bias toward more detail" / "redo the X step" → record the adjustment so
   the next run picks it up (or do it now if small).
+- "I just bought x20 tokens, just use opus for everything" / "anything
+  touching auth has to be opus, always" / "scratch the policy, be more
+  aggressive about saving window" → update the policy and per-role
+  defaults in `.overnight/config.json`; the planner reads it next
+  iteration and adjusts its per-step model/effort calls accordingly
+  (§6, §9).
 - "the principal made the wrong call on Y" → append to
   `bus/intent-corrections.md` so the principal reads it next invocation
   (§5).
@@ -199,31 +206,47 @@ prompt do the same thing; neither is load-bearing on its own.
 
 ## 2. Your job, in order — three phases, two `/clear` boundaries
 
-Setup happens across **three sessions, not one**. This is deliberate:
-the overnight runtime enforces fresh context per step (§3) because
-polluted context produces measurably worse work. The same is true of
-the setup that *builds* the runtime. A single ever-filling session
-would assemble the agent prompts, orientation, and roadmap with the
-whole noisy conversation loaded — and every overnight night thereafter
-would inherit that drift. Bootstrap is upstream of every night; its
-quality multiplies.
+Setup happens across **three phases, not one session**. This is
+deliberate: the overnight runtime enforces fresh context per step
+(§3) because polluted context produces measurably worse work. The
+same is true of the setup that *builds* the runtime. A single
+ever-filling session would assemble the agent prompts, orientation,
+and roadmap with the whole noisy conversation loaded — and every
+overnight night thereafter would inherit that drift. Bootstrap is
+upstream of every night; its quality multiplies.
 
-So split: long conversation in Phase A (fine, that's where nuance
-lives), then `/clear`, focused planning in Phase B, then `/clear`,
-then the build in Phase C using fresh subagents per artifact. Two
-`/clear` boundaries, three phases. **Explain this to the human upfront
-in Phase A** — same principle that makes overnight work, applied to
-setup — so the `/clear` when it comes is expected, not jarring.
+So split: conversational scoping in Phase A (where nuance lives —
+fine for this to be long), then `/clear`, focused planning in
+Phase B, then `/clear`, then the build in Phase C using fresh
+subagents per artifact. Two `/clear` boundaries between phases,
+three phases total. **Explain this to the human upfront in Phase
+A** — same principle that makes overnight work, applied to setup —
+so the `/clear` when it comes is expected, not jarring.
 
-Each `/clear` boundary has a kickoff line for the next session.
-Because `/clear` erases exactly the message that contains it, the
-handing-off session also **writes the kickoff to
-`.overnight/NEXT.md`** before signing off, and tells the human
-where to find it. State lives in files, not in conversation
-memory — that includes the single most load-bearing instruction at
-every transition. A newcomer who clears before copying, or who
-closes the terminal between sessions, recovers by opening
-`NEXT.md`.
+**Each phase itself can span more than one session if context gets
+heavy.** Phase A especially: if the human hasn't figured things out
+upfront and you're going deep on goals, taste, tradeoffs, the
+conversation can fill enough that another twenty turns of refinement
+would happen in increasingly drift-prone context. When you sense
+that — *don't push through.* The same fresh-context principle that
+splits phases also splits within a phase. Mechanism is identical
+(capture what's already agreed to the phase's artifact with a DRAFT
+marker and open TODOs, write a "continuing Phase X" kickoff to
+NEXT.md, tell the human, stop); the kickoff just says "continue
+scoping" or "continue the build plan" rather than "begin the next
+phase." Phase B can do the same if BUILD_PLAN.md review spirals.
+Phase C already spreads load across subagents per artifact and
+rarely needs it.
+
+Each `/clear` boundary — between phases or within one — has a
+kickoff line for the next session. Because `/clear` erases exactly
+the message that contains it, the handing-off session also
+**writes the kickoff to `.overnight/NEXT.md`** before signing off,
+and tells the human where to find it. State lives in files, not in
+conversation memory — that includes the single most load-bearing
+instruction at every transition. A newcomer who clears before
+copying, or who closes the terminal between sessions, recovers by
+opening `NEXT.md`.
 
 ### Phase A — Intent (this session, conversational)
 
@@ -236,11 +259,17 @@ closes the terminal between sessions, recovers by opening
    resume an active goal, or if none is active, ask whether to review
    past goals or set up a new one. Check the archive (§11) too: a
    similar past goal is reference material. **If `.overnight/NEXT.md`
-   exists**, a previous bootstrap was interrupted between phases —
-   read it, point the human at the right next session and the line to
-   paste, and stop. Don't try to resume Phase B or Phase C work in
-   this Phase A session; the whole point of the `/clear` is that the
-   resume happens in a fresh one.
+   exists**, a previous bootstrap session was handed off — read it.
+   The kickoff line will say one of: *"begin Phase B"* / *"begin
+   Phase C"* (a phase transition — if you're a Phase A session, you're
+   in the wrong phase; point the human at the right one and the line
+   to paste, then stop), or *"continuing Phase A"* (a mid-phase resume
+   — this is the right session; read the draft `INTENT.md`, focus on
+   the open TODOs at its bottom, and pick up the scoping conversation
+   from there without re-litigating what's already agreed). Either
+   way, don't try to do another phase's work in this Phase A session;
+   the whole point of the `/clear` is that the resume happens in a
+   fresh session of the right phase.
 
 1. **Welcome and orient the human.** Assume they're new to this — they
    likely grabbed this file to try it out and have no idea what it
@@ -263,6 +292,26 @@ closes the terminal between sessions, recovers by opening
 2. **Understand the goal (§9)** — through conversation, not a form.
    Don't write anything until you genuinely understand the goal and
    have played your understanding back to the human.
+
+   **Mid-phase reset is allowed if context gets heavy.** Phase A
+   bloats fast in real conditions — surveying an existing project
+   (file after file), back-and-forth on goals and tradeoffs, fetching
+   external material to evaluate (a dataset, a spec, a site to learn
+   from), iterating on shape. If you sense you're losing earlier
+   threads, repeating yourself, or working in increasingly drifty
+   context, don't push through to INTENT.md in that state. Save
+   what's already agreed to `.overnight/INTENT.md` (mark it
+   `## DRAFT — in progress` with an `## Open TODOs` list at the
+   bottom of what's unresolved), write a "continuing Phase A"
+   kickoff to `.overnight/NEXT.md` — same shape as the Phase B / C
+   handoffs in step 4 below, but the pasteable line is *"Read
+   .overnight/INTENT.md (draft with open TODOs at the bottom) and
+   START_HERE.md §2 Phase A, then continue the scoping conversation
+   from the open TODOs — don't re-litigate what's already agreed"* —
+   tell the human where the kickoff lives, and stop. They `/clear`,
+   paste the line in a fresh session, and Phase A continues with
+   clean context but no lost progress. Use judgment, don't force it;
+   but don't push through a degrading conversation either.
 
 3. **Write `.overnight/INTENT.md`** — the single artifact Phases B
    and C will read. Capture everything downstream needs in dense,
@@ -334,7 +383,13 @@ not your need for the spec — §2 Phase B is the task, but §1, §3, §4,
    Order steps so each can be built reading only earlier outputs.
 
 3. **Play back the build plan.** Let the human reorder, drop, or add
-   steps before Phase C builds anything.
+   steps before Phase C builds anything. If revisions spiral and
+   context gets heavy, the same mid-phase reset that Phase A allows
+   applies here too (§2 intro): save BUILD_PLAN.md with a `## DRAFT`
+   marker and open TODOs, write a "continuing Phase B" kickoff to
+   NEXT.md, `/clear`, resume. Needing this in Phase B is often a
+   signal that INTENT.md under-specified scope — if so, route back
+   to Phase A instead.
 
 4. **Hand off to Phase C.** First, overwrite `.overnight/NEXT.md`
    with the Phase C kickoff so the next session can recover it if
@@ -691,7 +746,12 @@ some projects want more, some fewer — but the spine is:
   Assigns each step to a track. Decides when to fan out into parallel
   tracks and when to join them. **Produces the per-iteration work order
   the runner executes**: for each track either `{track, step_id, prompt,
-  scope}` (advance), `idle` (nothing to advance right now), or `done`.
+  scope, model?, effort?, model_reason?}` (advance — `model` / `effort`
+  are optional per-step overrides the planner chooses when the user's
+  policy in `config.json` (§9) calls for tuning; omit them to use the
+  per-role defaults; `model_reason` is the one-line justification that
+  surfaces in the wakeup digest), `idle` (nothing to advance right now),
+  or `done`.
   The runner asks the planner what's next at every iteration boundary
   and runs whatever it says. **Curates discoveries into the roadmap**:
   when a control block's `next_hint` surfaces something nonobvious
@@ -796,12 +856,24 @@ comes from an agent via the control block.
 
 1. **Consult the planner.** Invoke the planner agent with `bus/state.json`
    and the latest control blocks from each track. It returns a per-track
-   work order: for each track either `{track, step_id, prompt, scope}`
-   (a step to advance), `idle` (nothing to advance right now), or `done`.
+   work order: for each track either `{track, step_id, prompt, scope,
+   model?, effort?, model_reason?}` (a step to advance — `model` /
+   `effort` are optional per-step overrides the planner emits when the
+   user's policy in `config.json` (§9) calls for budget-conscious
+   tuning), `idle` (nothing to advance right now), or `done`.
 
 2. **Spawn sessions.** For each track with an advance, spawn one
    `claude -p "<prompt>" --output-format json --permission-mode acceptEdits`
-   session with that track's worktree as the working directory.
+   session with that track's worktree as the working directory. Model
+   and reasoning-effort flags come from two sources, in order: (a) if
+   the planner's work order for this step includes `model` / `effort`
+   fields (a per-step override based on the step's nature and the
+   user's policy — see §9), use those; (b) otherwise fall back to the
+   per-role defaults in `.overnight/config.json`. Either way the
+   chosen model and (when the planner overrode) its `model_reason`
+   are recorded in `bus/log/` and surfaced in `wakeup.html` (§7).
+   Config is re-read each iteration so the human can edit it between
+   iterations without restarting.
    - **Single-track (N = 1):** no worktree — the session runs in the
      main checkout on the track's branch.
    - **Concurrent (N > 1):** before spawning, ensure each track has a
@@ -1100,9 +1172,16 @@ to `bus/intent-corrections.md`, not here.
 6. **Open review items / blocks / stalls.** Anything that didn't close
    cleanly, with a one-line "what the planner intends to try next."
 7. **Notional-cost-per-step bars.** Simple inline-SVG bar chart of the
-   API-equivalent figure per step. Not money on a plan, but a useful
-   relative signal — surfaces runaway steps before they eat tomorrow
-   night's window allotment.
+   API-equivalent figure per step, each bar labeled with the agent
+   and model that ran it (e.g. "step-4 · builder · sonnet-4.6 ·
+   standard"). When the planner chose the model per-step under a
+   budget-conscious policy (§9), the bar also shows the one-line
+   `model_reason` it gave (e.g. "auth refactor — high blast radius,
+   opus + max"). Not money on a plan, but a useful relative signal —
+   surfaces runaway steps before they eat tomorrow night's window
+   allotment, and lets the human spot wrong calls ("no, anything
+   touching auth gets opus, always") so they can correct the policy
+   via `/overnight` or by editing `config.json` directly.
 
 The digest is the human's morning interface to the system. Treat it as
 a first-class artifact: if it's ugly or unscannable, the human will
@@ -1157,6 +1236,16 @@ give up on reading it and the loop closes badly.
 - **Read it:** `.overnight/wakeup.html` — open each morning; what to
   look for; how to flag wrong principal decisions (write to
   `bus/intent-corrections.md`, usually via `/overnight`).
+- **Model and effort:** `.overnight/config.json` holds the policy you
+  described at setup plus per-role defaults. If your policy was
+  "always best," every step runs Opus + max and the file is short.
+  If it was budget-conscious, the planner decides per-step within
+  policy and writes a one-line reason that shows up on each cost
+  bar in `wakeup.html` — that's where you check whether the calls
+  are right. Edit `config.json` any time (takes effect next
+  iteration) or adjust by talking: `/overnight` "anything touching
+  auth gets opus, always" / "scratch the policy, just use opus for
+  everything."
 - **Talk to it:** open `claude` here and run **`/overnight`** to enter
   system context, then just talk — ask how it's going, request changes,
   flag corrections, stop the run, diagnose state, or say you're done.
@@ -1231,6 +1320,34 @@ human's own voice, things like:
   Parallel burns through the 5-hour plan window faster — N concurrent
   sessions ≈ N× the rate. Speed-vs-thrift is a real trade. The planner
   can discover tracks mid-goal too; this just sets the starting hint.
+- **Model and effort — capture their situation, don't fill in a table.**
+  This is a real budget call, but most users don't want to write
+  per-role rules. They describe their situation; the system distills it
+  into a *policy* the planner consults per-step (§4, §6). Ask how they
+  think about their plan and quality bar in their own words. Two common
+  shapes you'll hear:
+  - **"I never run out of tokens, just give me the best."** Policy is
+    `always_best: true`; per-role defaults are Opus + max reasoning;
+    the planner doesn't think about model choice — every step is the
+    same. Predictable, zero overhead, highest quality.
+  - **"I'm on Pro, be smart about it."** Policy captures their words
+    verbatim plus a distilled instruction (e.g. *"prefer Sonnet +
+    standard effort for routine builder work; escalate to Opus + max
+    for anything high-stakes — security, integration, refactors
+    crossing many files. Reviewer and principal always Opus."*);
+    per-role defaults are the safe fallback (typically Opus for
+    reviewer/principal, Sonnet for builder/planner). The planner
+    reads the policy each iteration and emits `model` / `effort` /
+    `model_reason` per step in its work order (§6) when it wants to
+    deviate from defaults.
+  Worth saying out loud during setup: **reviewer and principal stay
+  best by default even in budget-conscious policies** — they're the
+  quality guards, and spending Opus there is what makes saving
+  elsewhere safe. The variable choice is mainly builder and planner.
+  Write both the verbatim quote and the distilled policy to
+  `.overnight/config.json` so the user can see what you understood and
+  correct it (§8); the wakeup digest annotates each step with the
+  model and the planner's reason (§7) so wrong calls surface fast.
 - Which decisions should the principal agent make on their behalf, and
   which must always come back to them? (Every principal call is logged
   to `bus/decisions/` and surfaced in `wakeup.html` either way — see

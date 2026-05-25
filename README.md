@@ -42,15 +42,19 @@ is done it archives what it learned and cleans itself back out.
    assemble the system. Let's begin.
    ```
 
-3. Talk it through. Setup happens across **2-3 short sessions** with a
-   `/clear` between each — first you scope the goal with Claude (one
-   conversation, fine for it to be long), then `/clear` and Claude
-   plans the build in a fresh session, then `/clear` and Claude builds
-   the system using fresh subagents per piece. Claude explains the
-   why and tells you exactly what to paste at each handoff. The reason
-   is the same one that makes the overnight loop work: fresh context
-   per step. Refine by talking at any phase — "did we cover X?", "make
-   it revisit Y at the end."
+3. Talk it through. Setup happens across **3 phases**, with a `/clear`
+   between each — first you scope the goal with Claude (one
+   conversation; fine for it to be long, and if it runs *really* long
+   — say you're in an existing project with lots to inspect, or you're
+   iterating hard on shape — Claude can propose a mid-phase reset and
+   pick up in a fresh session without losing what you've already
+   agreed), then `/clear` and Claude plans the build in a fresh
+   session, then `/clear` and Claude builds the system using fresh
+   subagents per piece. Claude explains the why and tells you exactly
+   what to paste at each handoff. The reason is the same one that
+   makes the overnight loop work: fresh context per step. Refine by
+   talking at any phase — "did we cover X?", "make it revisit Y at
+   the end."
 4. When **`HANDOFF.md`** appears, you're ready. It contains the single command
    to start the overnight run.
 
@@ -106,6 +110,20 @@ where things stand.
   clear note in `wakeup.html` so you can restart when the window opens.
   Either way, you'll see the state if you check. STOP and KILL still work
   during the wait.
+- **Model and effort — describe your situation, the planner picks per
+  step.** Setup asks how you think about your plan and quality bar in
+  plain language ("I never run out, just use the best" vs. "I'm on Pro,
+  be smart about it") and distills it into a policy in
+  `.overnight/config.json`. *Always best* means every step runs the top
+  model — fully predictable. *Budget-conscious* policies let the
+  planner decide per-step within policy (cheap model for routine work,
+  best model for high-stakes steps like security or wide refactors)
+  with a one-line reason that shows on each cost bar in the wakeup
+  digest, so wrong calls are easy to spot. Adjust any time — edit
+  `config.json` or just tell `/overnight` ("anything touching auth gets
+  opus, always" / "scratch the policy, just use opus for everything").
+  Reviewer and principal stay best in any policy; they're the quality
+  guards.
 
 You don't have to inspect before re-running. A normal
 `python .overnight/run.py` also recovers from partial state on its own
