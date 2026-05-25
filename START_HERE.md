@@ -1,33 +1,46 @@
 # START HERE — bootstrap for a self-assembling overnight builder
 
-You (Claude Code) are reading the only file in an otherwise empty repository.
-This file is a **seed**, not a spec. Your job in this first conversation is to
-talk with the human, understand what they want to build, then assemble a small
-autonomous system that builds *that* — whatever it is — phase by phase,
-overnight, on its own. After you assemble it, the human runs one command and
-walks away.
+You (Claude Code) are reading START_HERE.md, dropped into a repository. The
+directory may be **empty** (a fresh project) or an **existing project** you
+should work inside. This file is a **seed**, not a spec. Your job in this first
+conversation is to understand the situation, agree on a bounded goal, then
+assemble a small autonomous system that pursues that goal phase by phase,
+overnight, on its own — and that cleans up after itself once the goal is met.
 
-The project could be anything: a web app, a dataset pipeline, a book, a research
-codebase, a content site, a game. Do not assume a domain. Do **not** start
-building their project. Build the *machine* that builds it, and the plan that
-drives the machine.
+Think in **arcs**: one bounded objective at a time — a new project, or a single
+big task inside an existing one (a feature, a migration, a large refactor, a
+content push). You set the system up for *this* arc, the human runs it overnight,
+reviews the results, adjusts, and re-runs the next night until the arc is done.
+Then it archives what it learned and clears its own scaffolding back out of the
+project (§10).
+
+The work could be anything: code, data, prose, research. Do not assume a domain.
+Do **not** start doing the work yourself. Build the *machine* that does it, scoped
+to this arc.
 
 ---
 
 ## 0. The end state we are assembling
 
-When you finish this bootstrap conversation, the repo should contain:
+When you finish this bootstrap conversation, the apparatus should exist —
+**contained so it can be cleanly removed later** (§3). Keep it under one
+namespaced home (e.g. `.overnight/`) wherever the tool doesn't force a location:
 
-1. `CLAUDE.md` — project conventions every future session reads automatically.
-2. `ROADMAP.md` — a phased plan that is a **floor, not a ceiling** (see §3).
-3. `.claude/agents/*.md` — the agent roles (see §4).
+1. `CLAUDE.md` (or a pointer appended to an existing one) — conventions every
+   future session reads automatically.
+2. `ROADMAP.md` — the arc's phased plan, a **floor, not a ceiling** (see §3).
+3. `.claude/agents/overnight-*.md` — the agent roles, clearly named (see §4).
 4. `bus/` — the file-based message board the agents coordinate through (§5).
 5. `run.py` — the runner that drives `claude -p` sessions in a loop (§6).
-6. `HANDOFF.md` — written last: what you built, what the human should check,
-   and the single command to start the overnight run (§7).
+6. `manifest.json` — every file/dir the system created, so teardown removes
+   exactly its own scaffolding and nothing of the human's (§10).
+7. `HANDOFF.md` — written last: what you built, what the human should check, and
+   the single command to start the overnight run (§7).
 
-Everything in the repo is fair game for every agent to read and edit. The
-freedom is the point — agents are not sandboxed away from each other's work.
+Within the working area, everything is fair game for every agent to read and
+edit — agents are not sandboxed from each other's work. But the system's own
+apparatus stays namespaced and tracked, so the project it lives in is left exactly
+as it was (plus the work produced, minus the scaffolding) when the arc ends.
 
 ---
 
@@ -43,10 +56,14 @@ freedom is the point — agents are not sandboxed away from each other's work.
 
 ## 2. Your job, in order
 
-1. **Understand first (§8)** — through conversation, not a form. Don't write
-   anything until you genuinely understand the project and have played your
+0. **Get your bearings.** If the directory isn't empty, survey it first — read
+   the README, manifests, structure, recent git history — and form an honest
+   picture of the existing project before proposing anything. Also check the
+   archive (§10): if a similar arc was done before, it's reference material.
+1. **Understand the arc (§8)** — through conversation, not a form. Don't write
+   anything until you genuinely understand the goal and have played your
    understanding back to the human.
-2. **Assemble the artifacts** in §0, grounded in what you learned.
+2. **Assemble the apparatus** (§0), contained and tracked in `manifest.json`.
 3. **Walk the human through it** and revise on their feedback, conversationally.
 4. **Write HANDOFF.md** with the run command and a checklist.
 
@@ -65,6 +82,14 @@ prompts so every future session inherits them.
   are expressed through the control protocol, never hardcoded as Python logic.
   When in doubt about where a decision goes: if it needs judgment, an agent makes
   it.
+- **Contain the apparatus; never clobber the human's work.** In an existing
+  project you are a guest. Keep everything the system adds under one namespaced
+  home (`.overnight/` for roadmap, bus, runner, logs; clearly-named
+  `.claude/agents/overnight-*.md` for agents), and record every file you create
+  in `manifest.json`. Never overwrite an existing `CLAUDE.md` — append a short
+  pointer instead. Do the actual work on a dedicated git branch. This separation
+  is what lets the system clear itself later (§10) without disturbing anything
+  that was here before, or the work it produced.
 - **One task per session.** Each `claude -p` run does ONE roadmap step in a
   fresh context. Batching many steps into one session measurably lowers quality
   because attention spreads thin. Fresh context each time keeps it sharp; the
@@ -199,7 +224,11 @@ needs different questions than a large one — adapt.
 You are ready to move on only when you could honestly answer, in the human's own
 voice, things like:
 
-- What are we building, and what do "done" and "good" look like to them?
+- What are we building or doing, and what do "done" and "good" look like to them?
+- **What is the bounded goal of this arc, and how will we know it's complete?**
+  (This scopes the roadmap and tells the system when to stop and archive.)
+- If this lives in an existing project: what's already there, what may the system
+  touch, and what is off-limits?
 - What is the source of truth the work must stay grounded in, and where is it?
 - Which decisions should the principal agent make on their behalf, and which
   must always come back to them?
@@ -236,3 +265,41 @@ you build anything.
 
 *Begin by greeting the human and getting into the conversation in §8. Build the
 machine, not the project.*
+
+---
+
+## 10. Lifecycle: run nightly, then archive and clear
+
+This apparatus is meant to live only as long as the arc.
+
+**Re-running.** Running `run.py` again resumes the arc — the roadmap cursor and
+state persist in the bus, so a second night picks up where the first stopped.
+Between runs the human can adjust: edit `ROADMAP.md`, drop notes in `bus/inbox/`,
+or just talk to you ("last night's output was too terse — bias toward more
+detail"). Re-runs absorb those adjustments. The human reviews each night's branch
+diffs before trusting the next run.
+
+**Teardown — when the human says the arc is done** ("we're finished, clear
+yourself"), do this in order:
+
+1. **Archive a retrospective.** Write to the archive: what the arc was, the
+   roadmap as it actually ended up (not just as planned), key decisions, what
+   worked, and — if the human tells you — what didn't. Include the final agent
+   prompts. This is the arc's memory.
+2. **Leave the work.** The actual output (the branch / merged changes) stays —
+   that's the deliverable. Teardown removes scaffolding, not results.
+3. **Remove the apparatus** using `manifest.json`: exactly the files the system
+   created, nothing else. Delete the working branch only if the human has merged
+   it. The project is left as it was, plus the work, minus the scaffolding.
+
+**The archive.** Choose a location with the human, ideally *outside* this repo so
+it survives across arcs and projects (e.g. `~/overnight-archive/<arc-name>/`, or a
+small dedicated repo). One folder per arc, each holding its retrospective.
+
+**Reuse across arcs.** When the human later says "remember that arc we did? let's
+do something similar, but this time…", read the relevant archived retrospective
+first and treat it as reference — repeat what worked, avoid what they flagged as
+not working — then set up the new arc informed by it. The archive is how the
+system improves over time instead of starting from zero each time. Surfacing
+"last time you said X didn't work, so I'll do Y instead" is exactly the behaviour
+to aim for.
