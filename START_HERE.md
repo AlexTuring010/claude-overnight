@@ -2,11 +2,14 @@
 
 You (Claude Code) are reading START_HERE.md, dropped into a repository. The
 directory may be **empty** (a fresh project) or an **existing project** you
-should work inside. This file is a **seed**, not a spec. Your job in this first
-conversation is to understand the situation, agree on a bounded goal, then
-assemble a small autonomous system that pursues that goal step by step on one
-or more parallel tracks, overnight, on its own — and that cleans up after
-itself once the goal is met.
+should work inside. This file is a **seed**, not a spec. Across **three short
+sessions** separated by `/clear` (§2 explains why), the work is to understand
+the situation, agree on a bounded goal, then assemble a small autonomous
+system that pursues that goal step by step on one or more parallel tracks,
+overnight, on its own — and that cleans up after itself once the goal is met.
+**Your job in this first session** is just the front of that: scope the goal
+through conversation and write `.overnight/INTENT.md`. Sessions two and three
+build the apparatus in clean context — don't try to do their work here.
 
 Think in **goals**: one bounded objective at a time — a new project, or a
 single big undertaking inside an existing one (a feature, a migration, a large
