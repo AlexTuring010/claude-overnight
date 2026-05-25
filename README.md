@@ -19,10 +19,10 @@ cleans itself back out when the job's done.
 
 The system is scoped to one **arc** at a time. You set it up, run it overnight,
 review, adjust, and re-run the next night until the arc is complete. Then you tell
-it "we're done" (`/overnight-wrap-up`), and it archives what it learned (what
-worked, what didn't) and removes its own scaffolding — leaving your project as it
-was, plus the work it produced. Next time you want something similar, it reads
-that archive and reuses the lessons instead of starting from zero.
+it you're done (just say so — see below), and it archives what it learned (what
+worked, what didn't) and resets for the next arc — leaving your project as it was,
+plus the work it produced. Next time you want something similar, it reads that
+archive and reuses the lessons instead of starting from zero.
 
 ## How it stays out of your project
 
@@ -35,28 +35,35 @@ It's built to live inside a project you care about without contaminating it:
   cost of some git noise).
 - The few files Claude Code requires elsewhere (`agents`, slash `commands`) are
   `overnight-` prefixed and recorded in a manifest.
-- Your `CLAUDE.md` is touched only via one clearly-marked block (or created fresh
-  if you don't have one), so teardown removes exactly that and nothing else.
+- Your `CLAUDE.md` is **never touched** — the system stays dormant until you
+  summon it, so its orientation lives in its own folder, not in your project's
+  instructions.
 - **Archives live outside the repo** (default `~/.overnight/archive/<project>/<arc>/`,
   or wherever you choose at setup), so past arcs never enter any project's git and
   can be reused across projects.
 
-When an arc ends, teardown uses the manifest to delete precisely what it added.
-Your project returns to exactly its prior state, plus the work, minus every trace
-of the system.
+When an arc ends you can keep the system installed for the next one, or have it
+uninstall completely — using its manifest to delete precisely what it added, so
+your project returns to exactly its prior state, plus the work.
 
 ## Two ways to interact with it
 
 - **Run it (headless):** `python .overnight/run.py` — the autonomous overnight
   loop. Start it and walk away.
-- **Talk to it (interactive):** open `claude` in the repo and just talk. It reads
-  `CLAUDE.md` on startup, so a fresh session already knows the arc and its state
-  before you say anything. Slash commands make it unambiguous:
-  `/overnight-status`, `/overnight-adjust`, `/overnight-wrap-up`.
+- **Talk to it (interactive):** open `claude` in the repo and run one command —
+  **`/overnight`**. That loads the system's context so the session knows what's
+  going on; after that you just talk. "How's it going?", "bias toward more
+  detail", "I think we're done with this" — it understands all of it. No other
+  commands to remember.
+  - *If `/overnight` isn't set up* (or your editor doesn't show it), just paste:
+    "Read `.overnight/orientation.md` and `.overnight/bus/state.json`, then act as
+    the overnight system." Same effect — the command was only a shortcut for this.
 
-There's no persistent process holding a conversation in memory — the state lives
-in files, and every session (yours or the runner's) reads them to know where
-things stand.
+The system stays dormant until you run `/overnight` — it never touches your
+`CLAUDE.md` or interferes with normal Claude Code use. There's no persistent
+process holding a conversation in memory; the state lives in files, and a session
+reads them (via `/overnight`, or the runner's own prompt) to know where things
+stand.
 
 ## What's in here at the start
 

@@ -29,47 +29,49 @@ follow it so it stays walled off from the human's project and removes cleanly.
 ```
 <project>/
 ├─ .overnight/                  # everything the system owns (gitignored by default — §8)
-│  ├─ ROADMAP.md                # the arc's plan (floor, not ceiling — §3)
-│  ├─ run.py                    # the runner (§6)
-│  ├─ orientation.md            # the briefing CLAUDE.md points sessions to (§1)
-│  ├─ manifest.json             # every path the system created (§10 teardown)
-│  └─ bus/                      # agent coordination (§5)
+│  ├─ orientation.md            # install-level: the briefing a session loads to enter context (§1)
+│  ├─ run.py                    # install-level: the runner (§6)
+│  ├─ manifest.json             # install-level: every path the system created (§10)
+│  ├─ HANDOFF.md                # install-level: written last — what was built + how to run (§7)
+│  ├─ ROADMAP.md                # arc-level: the current arc's plan (floor, not ceiling — §3)
+│  └─ bus/                      # arc-level: agent coordination (§5)
 │     ├─ state.json
 │     ├─ inbox/
 │     └─ log/
 ├─ .claude/
-│  ├─ agents/overnight-*.md     # the agent roles (§4) — prefixed, tracked
-│  └─ commands/overnight-*.md   # the human's slash commands (§1) — prefixed, tracked
-├─ CLAUDE.md                    # gets a small marked block, or created if absent
-├─ HANDOFF.md                   # written last (§7)
-└─ <the human's real work>      # committed on a dedicated branch
+│  ├─ commands/overnight.md     # the ONE command that loads system context (§1)
+│  └─ agents/overnight-*.md     # the agent roles (§4) — prefixed, tracked
+└─ <the human's real work>      # on a dedicated branch
 ```
+
+`CLAUDE.md` is **not** in this list — the system never touches it (see rule 3).
+Note the split: **install-level** files persist across arcs (the runner, the
+command, the agents, orientation); **arc-level** files (ROADMAP, bus) belong to
+the current arc and are archived + reset when an arc completes (§10).
 
 Paths in this file are written relative to the project root. Everything the
 system owns sits under `.overnight/` (so `ROADMAP.md`, `run.py`, `bus/` mean
-`.overnight/ROADMAP.md`, etc.) except the agent and command files, which Claude
+`.overnight/ROADMAP.md`, etc.) except the command and agent files, which Claude
 Code requires under `.claude/`. The human runs the loop with
 `python .overnight/run.py`.
 
 Integration rules — these are what keep it clean (do all of them):
 
 1. **Keep the apparatus separable from the human's work.** The default is to
-   gitignore it (`.overnight/`, the `overnight-` files under `.claude/`,
-   `HANDOFF.md`) so the project's commits only ever contain real work — but this
-   is a **setup decision to raise with the human** (§8), not an assumption.
-   Gitignoring keeps git clean but the working state lives only on this machine;
-   committing the apparatus survives across machines and versions the run history
-   at the cost of some git noise. Ask, then do what they choose. Either way, the
-   work the agents produce is committed on a dedicated branch — that's the
-   deliverable, never gitignored.
+   gitignore it (`.overnight/`, the `overnight-` files under `.claude/`) so the
+   project's commits only ever contain real work — but this is a **setup decision
+   to raise with the human** (§8), not an assumption. Gitignoring keeps git clean
+   but the working state lives only on this machine; committing the apparatus
+   survives across machines and versions the run history at the cost of some git
+   noise. Ask, then do what they choose. Either way, the work the agents produce
+   is committed on a dedicated branch — that's the deliverable, never gitignored.
 2. **Everything the system writes inside the project is namespaced** (`.overnight/`
    or an `overnight-` prefix) and listed in `.overnight/manifest.json`.
-3. **`CLAUDE.md` is the one shared file you may touch** (sessions auto-read it).
-   If it doesn't exist, create it (handled per the git choice above) containing
-   only the orientation pointer to `.overnight/orientation.md`. If it already
-   exists, append exactly one block delimited by `<!-- overnight:start -->` and
-   `<!-- overnight:end -->` holding only that pointer — so teardown can remove
-   precisely that block and leave the human's content untouched.
+3. **Never touch `CLAUDE.md`.** Orientation does not live there — it lives in
+   `.overnight/orientation.md` and is loaded on demand: interactively by the
+   `/overnight` command, and for headless runs by the runner injecting it into each
+   session's prompt (§1). This keeps the human's own `CLAUDE.md` (if any) entirely
+   theirs. The system stays dormant until summoned.
 4. **Archives live outside the project** (§10), so they never enter its git.
 
 Within the working area, every agent may read and edit freely — they are not
@@ -80,38 +82,53 @@ work, minus the scaffolding.
 
 ---
 
-## 1. How the human communicates with it (two channels)
+## 1. How the human communicates with it
 
 There is no persistent "it" holding the conversation in its head — every session
-is amnesiac. Communication works because **state lives in files and every session
-reads them on startup** (via `CLAUDE.md`). There are two distinct channels; make
-both clear to the human:
+is amnesiac, and `CLAUDE.md` is left untouched, so the system stays **dormant
+until summoned**. State lives in files; a session becomes aware of the system only
+when it loads them. Two channels:
 
-- **To run it (headless):** `python .overnight/run.py` — the autonomous overnight
-  loop. The human doesn't chat with this; they start it and walk away.
-- **To talk to it (interactive):** open `claude` in the repo and just talk. Because
-  `CLAUDE.md` orients every session, a fresh interactive session already knows the
-  arc, the roadmap, and the current state before the human says anything. So
-  "did we cover X?", "bias toward more detail", or "we're done" all just work —
-  the session reads the files and acts.
+**To run it (headless):** `python .overnight/run.py` — the autonomous overnight
+loop. The human doesn't chat with this; they start it and walk away. The runner
+orients each `claude -p` session itself, by injecting `.overnight/orientation.md`
+and the current state into the session's prompt — it does not rely on `CLAUDE.md`.
 
-Give the human a small set of **slash commands** (`.claude/commands/overnight-*.md`)
-as the unambiguous control surface, e.g.:
+**To talk to it (interactive):** open `claude` in the repo and run the one
+command — **`/overnight`**. That command's whole job is to load
+`.overnight/orientation.md` and `bus/state.json` so the session enters "system
+context": now it knows what the system is, whether an arc is active, and where it
+stands. From that point on, **the human just talks** — there is no command zoo to
+memorise. The session reads intent from plain language:
 
-- `/overnight-status` — read the roadmap + state and summarise progress, cost, and
-  what's left.
-- `/overnight-adjust` — capture a change the human wants (record it to the bus /
-  roadmap) so the next run picks it up.
-- `/overnight-wrap-up` — the human is done: run teardown — archive the
-  retrospective, then remove the apparatus (§10).
+- "how's it going?" / "what's left?" → summarise progress, cost, remaining steps.
+- "bias toward more detail" / "redo the X step" → record the adjustment so the
+  next run picks it up (or do it now if small).
+- "I think we're done with this" → confirm, then archive the arc (§10).
 
-Tell the human these exist and that plain talking works too — the commands are
-just the reliable version. Adapt the names to taste.
+So `/overnight` is the single doorway into the system; conversation does
+everything else. If `/overnight` loads and finds **no active arc** (a previous arc
+was completed and archived), the session says so and waits — offering to look back
+at past arcs or to set up a new one (§10). Tell the human only this: run
+`/overnight` to talk to the system, then speak normally.
 
-> Quick start for the human: "Read START_HERE.md and let's set this up." Talk
-> through the arc, look over what I produce, refine by talking. When HANDOFF.md
-> appears you're ready. Run with `python .overnight/run.py`; talk to it any time
-> by opening `claude` here; finish with `/overnight-wrap-up`.
+**Fallback if the command isn't there.** The slash command is just convenience —
+all it does is read `.overnight/orientation.md`. If it was never created, got
+removed, or isn't available in their editor, the human can summon the system with
+a plain prompt instead:
+
+> "Read `.overnight/orientation.md` and `.overnight/bus/state.json`, then act as
+> the overnight system — tell me where the current arc stands, or that there's no
+> active arc."
+
+Put this exact fallback line in `orientation.md` and in HANDOFF.md, so it's
+recorded somewhere the human can always find it. The command and the prompt do the
+same thing; neither is load-bearing on its own.
+
+> Quick start for the human: "Read START_HERE.md and let's set this up." I'll
+> explain what this is, we'll scope the goal together, and I'll build it. After
+> that: run it with `python .overnight/run.py`; talk to it any time with
+> `/overnight` then plain conversation.
 
 ---
 
@@ -119,8 +136,12 @@ just the reliable version. Adapt the names to taste.
 
 0. **Get your bearings.** If the directory isn't empty, survey it first — read
    the README, manifests, structure, recent git history — and form an honest
-   picture of the existing project before proposing anything. Also check the
-   archive (§10): if a similar arc was done before, it's reference material.
+   picture of the existing project before proposing anything. **If an `.overnight/`
+   install already exists** (from previous arcs), do not clobber it: load its state,
+   recognise this as a returning install, and jump to the §10 re-entry behaviour —
+   resume an active arc, or if none is active, ask whether to review past arcs or
+   set up a new one. Check the archive (§10) too: a similar past arc is reference
+   material.
 1. **Welcome and orient the human.** Assume they're new to this — they likely
    grabbed this file to try it out and have no idea what it sets up. Before any
    questions, explain in plain language, in your own words: what this is (a system
@@ -134,16 +155,19 @@ just the reliable version. Adapt the names to taste.
 2. **Understand the arc (§8)** — through conversation, not a form. Don't write
    anything until you genuinely understand the goal and have played your
    understanding back to the human.
-3. **Assemble the apparatus** (§0), contained and tracked in `manifest.json`.
+3. **Assemble the apparatus** (§0): the install-level pieces (the `/overnight`
+   command, `orientation.md`, the runner, the agents) and the arc-level pieces
+   (ROADMAP, bus), contained and tracked in `manifest.json`.
 4. **Walk the human through it** and revise on their feedback, conversationally.
-5. **Write HANDOFF.md** with the run command and a checklist.
+5. **Write `.overnight/HANDOFF.md`** — what was built, the run command, the one
+   `/overnight` command, and how to finish (§7).
 
 ---
 
 ## 3. Principles the assembled system MUST embody
 
-These are hard-won; encode them into `CLAUDE.md`, `ROADMAP.md`, and the agent
-prompts so every future session inherits them.
+These are hard-won; encode them into `.overnight/orientation.md`, `ROADMAP.md`,
+and the agent prompts so every future session inherits them.
 
 - **Intelligence lives in the agents, not the runner.** Keep `run.py` as dumb as
   the project allows. It runs a session, reads the decision the session handed
@@ -155,11 +179,12 @@ prompts so every future session inherits them.
   it.
 - **Contain the apparatus; never clobber the human's work.** In an existing
   project you are a guest. Follow the concrete layout and integration rules in §0
-  exactly: everything the system owns lives in a gitignored `.overnight/` (plus
-  `overnight-`-prefixed, gitignored files under `.claude/`), every created path is
-  recorded in `manifest.json`, and `CLAUDE.md` is touched only via one delimited
-  block. This is what lets the system clear itself later (§10) without disturbing
-  anything that was here before, or the work it produced.
+  exactly: everything the system owns lives under `.overnight/` (plus
+  `overnight-`-prefixed files under `.claude/`), every created path is recorded in
+  `manifest.json`, and `CLAUDE.md` is never touched (orientation loads on demand
+  from `.overnight/orientation.md`, §1). This is what lets the system uninstall
+  cleanly later (§10) without disturbing anything that was here before, or the
+  work it produced.
 - **One task per session.** Each `claude -p` run does ONE roadmap step in a
   fresh context. Batching many steps into one session measurably lowers quality
   because attention spreads thin. Fresh context each time keeps it sharp; the
@@ -273,16 +298,22 @@ does what the agent's control block says.
 
 ---
 
-## 7. HANDOFF.md (write this last)
+## 7. HANDOFF.md (write this last, to `.overnight/HANDOFF.md`)
 
-- One paragraph: what got assembled.
-- A checklist for the human: skim `ROADMAP.md`, the agent prompts, `CLAUDE.md`.
-- **The two channels, spelled out:** run it with `python .overnight/run.py`; talk
-  to it any time by opening `claude` in this repo (it orients itself from `CLAUDE.md`).
-- **The commands:** `/overnight-status`, `/overnight-adjust`, `/overnight-wrap-up`
-  — what each does, and that plain talking works too.
-- How to stop a run, and how to finish the arc (`/overnight-wrap-up`).
-- A note that they can keep discussing with you to refine anything before running.
+- One paragraph: what got assembled and what the arc's goal is.
+- A checklist for the human: skim `.overnight/ROADMAP.md` and the agent prompts.
+- **Run it:** `python .overnight/run.py` — the overnight loop; how to stop it.
+- **Talk to it:** open `claude` here and run **`/overnight`** to enter system
+  context, then just talk — ask how it's going, request changes, or say you're
+  done. No other commands to remember.
+- **If `/overnight` isn't available**, include the plain fallback prompt verbatim:
+  "Read `.overnight/orientation.md` and `.overnight/bus/state.json`, then act as
+  the overnight system — tell me where the current arc stands, or that there's no
+  active arc."
+- **Finishing:** tell it (in `/overnight` context) you're done with the arc; it
+  archives and resets for a possible next arc. Mention that fully removing the
+  system from the project is a separate step it can do on request (§10).
+- A note that they can keep discussing to refine anything before the first run.
 
 ---
 
@@ -347,48 +378,58 @@ you build anything.
 
 ---
 
-## 10. Lifecycle: run nightly, then archive and clear
+## 10. Lifecycle: run, finish an arc, start the next, or uninstall
 
-This apparatus is meant to live only as long as the arc.
+The install persists across arcs; each individual arc has a beginning and an end.
 
-**Re-running.** Running `run.py` again resumes the arc — the roadmap cursor and
-state persist in the bus, so a second night picks up where the first stopped.
-Between runs the human can adjust: edit `ROADMAP.md`, drop notes in `bus/inbox/`,
-or just talk to you ("last night's output was too terse — bias toward more
-detail"). Re-runs absorb those adjustments. The human reviews each night's branch
-diffs before trusting the next run.
+**Re-running an arc.** `python .overnight/run.py` again resumes the current arc —
+the roadmap cursor and state persist in the bus, so a second night picks up where
+the first stopped. Between runs the human adjusts by editing `ROADMAP.md`, dropping
+notes in `bus/inbox/`, or just talking in `/overnight` context ("last night was too
+terse — bias toward more detail"). Re-runs absorb those adjustments. The human
+reviews each night's branch diffs before trusting the next run.
 
-**Teardown — when the human says the arc is done** (via `/overnight-wrap-up`, or
-just telling an interactive session "we're finished, clear yourself" — it knows
-what they mean because `CLAUDE.md` oriented it on startup), do this in order:
+**Finishing an arc.** When the human says they're done — in `/overnight` context,
+just "I think we're done with this" — confirm, then:
 
-1. **Archive a retrospective.** Write to the archive: what the arc was, the
-   roadmap as it actually ended up (not just as planned), key decisions, what
-   worked, and — if the human tells you — what didn't. Include the final agent
-   prompts. This is the arc's memory.
-2. **Leave the work.** The actual output (the branch / merged changes) stays —
-   that's the deliverable. Teardown removes scaffolding, not results.
-3. **Remove the apparatus** using `manifest.json`: delete exactly the paths the
-   system created (`.overnight/`, the `overnight-*` files under `.claude/`), remove
-   the delimited block from `CLAUDE.md` (or the whole file if the system created
-   it), and drop any `.gitignore` lines it added. Delete the working branch only
-   if the human has merged it. The project is left exactly as it was, plus the
-   work, minus every trace of the scaffolding.
+1. **Archive a retrospective.** Write to the archive: what the arc was, the roadmap
+   as it actually ended up, key decisions, what worked, and — if they tell you —
+   what didn't. Include the final agent prompts. This is the arc's memory.
+2. **Leave the work.** The output (the branch / merged changes) stays — that's the
+   deliverable.
+3. **Reset the arc-level files** (`ROADMAP.md`, `bus/`) so the slate is clean, but
+   **keep the install** (the `/overnight` command, runner, agents, orientation).
+   The system is now idle, ready for a next arc.
 
-**The archive — concrete location.** Default to **outside** the repo so it never
-enters any project's git and is reusable across projects:
-`~/.overnight/archive/<project-name>/<arc-name>/`, holding `retrospective.md`,
-the final `roadmap.md`, and the final agent prompts. Confirm the path with the
-human at setup (a dedicated git repo is a fine alternative if they want it backed
-up and versioned). One folder per arc.
+**Re-entry (the next time).** Two equal paths, both fine:
+- The human re-gives the kickoff prompt → you read START_HERE, find the existing
+  `.overnight/` install (§2 step 0), recognise it as a returning install — this is
+  normal, not a conflict — and proceed.
+- The human just runs `/overnight` → it loads context, sees no active arc, says so,
+  and waits. Offer to review past arcs (from the archive) or scope a new one. If
+  they pick a new arc, run the same scoping conversation (§8) and assemble fresh
+  arc-level files, reusing the archive as reference (below).
 
-**Reuse across arcs.** When the human later says "remember that arc we did? let's
-do something similar, but this time…", read the relevant archived retrospective
-first and treat it as reference — repeat what worked, avoid what they flagged as
-not working — then set up the new arc informed by it. The archive is how the
-system improves over time instead of starting from zero each time. Surfacing
+**Reuse across arcs.** When the human says "remember that arc we did? let's do
+something similar, but this time…", read the relevant archived retrospective first
+and treat it as reference — repeat what worked, avoid what they flagged. Surfacing
 "last time you said X didn't work, so I'll do Y instead" is exactly the behaviour
-to aim for.
+to aim for. The archive is how the system improves instead of starting from zero.
+
+**Uninstalling entirely** (separate from finishing an arc — only when the human
+asks to remove the system from this project): use `manifest.json` to delete exactly
+the paths the system created (`.overnight/`, the `overnight-*` files under
+`.claude/`) and drop any `.gitignore` lines it added. `CLAUDE.md` needs no cleanup —
+the system never touched it. Archives outside the repo remain (they're the memory);
+mention them so the human can delete them too if they want. The project is left
+exactly as it was, plus whatever work was produced.
+
+**The archive — concrete location.** Default **outside** the repo so it never
+enters any project's git and is reusable across projects:
+`~/.overnight/archive/<project-name>/<arc-name>/`, holding `retrospective.md`, the
+final `roadmap.md`, and the final agent prompts. Confirm the path at setup (a
+dedicated git repo is a fine alternative if they want it versioned). One folder
+per arc.
 
 ---
 
