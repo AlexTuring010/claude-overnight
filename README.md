@@ -19,16 +19,49 @@ cleans itself back out when the job's done.
 
 The system is scoped to one **arc** at a time. You set it up, run it overnight,
 review, adjust, and re-run the next night until the arc is complete. Then you tell
-it "we're done," and it archives what it learned (what worked, what didn't) and
-removes its own scaffolding — leaving your project as it was, plus the work it
-produced. Next time you want something similar, it reads that archive and reuses
-the lessons instead of starting from zero.
+it "we're done" (`/overnight-wrap-up`), and it archives what it learned (what
+worked, what didn't) and removes its own scaffolding — leaving your project as it
+was, plus the work it produced. Next time you want something similar, it reads
+that archive and reuses the lessons instead of starting from zero.
 
-## What's in here
+## How it stays out of your project
 
-- **`START_HERE.md`** — the seed. Everything Claude needs to understand the job
-  and assemble the system. This is the only file that matters at the start; the
-  rest gets generated (and namespaced so it can be cleanly removed later).
+It's built to live inside a project you care about without contaminating it:
+
+- Everything the system owns lives in a single `.overnight/` folder (roadmap,
+  runner, bus, logs, manifest). During setup Claude asks how you want it handled
+  in git — **gitignored** (the default; your commits only ever contain real work,
+  state stays on this machine) or **committed** (survives across machines, at the
+  cost of some git noise).
+- The few files Claude Code requires elsewhere (`agents`, slash `commands`) are
+  `overnight-` prefixed and recorded in a manifest.
+- Your `CLAUDE.md` is touched only via one clearly-marked block (or created fresh
+  if you don't have one), so teardown removes exactly that and nothing else.
+- **Archives live outside the repo** (default `~/.overnight/archive/<project>/<arc>/`,
+  or wherever you choose at setup), so past arcs never enter any project's git and
+  can be reused across projects.
+
+When an arc ends, teardown uses the manifest to delete precisely what it added.
+Your project returns to exactly its prior state, plus the work, minus every trace
+of the system.
+
+## Two ways to interact with it
+
+- **Run it (headless):** `python .overnight/run.py` — the autonomous overnight
+  loop. Start it and walk away.
+- **Talk to it (interactive):** open `claude` in the repo and just talk. It reads
+  `CLAUDE.md` on startup, so a fresh session already knows the arc and its state
+  before you say anything. Slash commands make it unambiguous:
+  `/overnight-status`, `/overnight-adjust`, `/overnight-wrap-up`.
+
+There's no persistent process holding a conversation in memory — the state lives
+in files, and every session (yours or the runner's) reads them to know where
+things stand.
+
+## What's in here at the start
+
+- **`START_HERE.md`** — the seed. The only file that matters at the start;
+  everything else is generated during setup (and namespaced so it removes cleanly).
 
 ## Before you start
 
@@ -48,21 +81,17 @@ what's here, talk with me to scope the arc, play back what you understood, then
 assemble the system. Let's begin.
 ```
 
-From there, just talk it through and look over what it makes. Refine by
-discussing ("did we cover X?", "have the roadmap revisit Y near the end") — you
-shouldn't need to edit the plan by hand. When `HANDOFF.md` appears, you're ready
-to run.
+Talk it through, look over what it makes, refine by discussing. When `HANDOFF.md`
+appears, you're ready to run.
 
-## What running it looks like
-
-`HANDOFF.md` gives you the exact command. It loops one focused `claude -p` session
-at a time, each doing a single roadmap step in a fresh context, with hard caps on
-iterations and spend so the worst case is "it stopped and left a note," never a
-runaway overnight loop. It runs on your subscription, so a long build makes the
-most of the plan you're already paying for.
+You don't need to understand how any of this works going in — Claude starts by
+explaining what it is and how you'll work together, then walks you through setup.
+If a choice comes up (like the git question above), it'll offer a sensible default
+you can just accept.
 
 ## One honest note
 
 A self-assembling system is powerful but harder to debug than a fixed script.
 Treat the first run as a supervised dry run: watch an iteration or two, read the
-`bus/log/`, confirm the caps and the hand-off behave — then trust it overnight.
+`.overnight/bus/log/`, confirm the caps and the hand-off behave — then trust it
+overnight.

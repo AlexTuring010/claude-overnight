@@ -22,35 +22,96 @@ to this arc.
 
 ## 0. The end state we are assembling
 
-When you finish this bootstrap conversation, the apparatus should exist —
-**contained so it can be cleanly removed later** (§3). Keep it under one
-namespaced home (e.g. `.overnight/`) wherever the tool doesn't force a location:
+When you finish this bootstrap conversation, the apparatus exists as a **specific,
+self-contained structure** — not scattered files. This exact layout is the system;
+follow it so it stays walled off from the human's project and removes cleanly.
 
-1. `CLAUDE.md` (or a pointer appended to an existing one) — conventions every
-   future session reads automatically.
-2. `ROADMAP.md` — the arc's phased plan, a **floor, not a ceiling** (see §3).
-3. `.claude/agents/overnight-*.md` — the agent roles, clearly named (see §4).
-4. `bus/` — the file-based message board the agents coordinate through (§5).
-5. `run.py` — the runner that drives `claude -p` sessions in a loop (§6).
-6. `manifest.json` — every file/dir the system created, so teardown removes
-   exactly its own scaffolding and nothing of the human's (§10).
-7. `HANDOFF.md` — written last: what you built, what the human should check, and
-   the single command to start the overnight run (§7).
+```
+<project>/
+├─ .overnight/                  # everything the system owns (gitignored by default — §8)
+│  ├─ ROADMAP.md                # the arc's plan (floor, not ceiling — §3)
+│  ├─ run.py                    # the runner (§6)
+│  ├─ orientation.md            # the briefing CLAUDE.md points sessions to (§1)
+│  ├─ manifest.json             # every path the system created (§10 teardown)
+│  └─ bus/                      # agent coordination (§5)
+│     ├─ state.json
+│     ├─ inbox/
+│     └─ log/
+├─ .claude/
+│  ├─ agents/overnight-*.md     # the agent roles (§4) — prefixed, tracked
+│  └─ commands/overnight-*.md   # the human's slash commands (§1) — prefixed, tracked
+├─ CLAUDE.md                    # gets a small marked block, or created if absent
+├─ HANDOFF.md                   # written last (§7)
+└─ <the human's real work>      # committed on a dedicated branch
+```
 
-Within the working area, everything is fair game for every agent to read and
-edit — agents are not sandboxed from each other's work. But the system's own
-apparatus stays namespaced and tracked, so the project it lives in is left exactly
-as it was (plus the work produced, minus the scaffolding) when the arc ends.
+Paths in this file are written relative to the project root. Everything the
+system owns sits under `.overnight/` (so `ROADMAP.md`, `run.py`, `bus/` mean
+`.overnight/ROADMAP.md`, etc.) except the agent and command files, which Claude
+Code requires under `.claude/`. The human runs the loop with
+`python .overnight/run.py`.
+
+Integration rules — these are what keep it clean (do all of them):
+
+1. **Keep the apparatus separable from the human's work.** The default is to
+   gitignore it (`.overnight/`, the `overnight-` files under `.claude/`,
+   `HANDOFF.md`) so the project's commits only ever contain real work — but this
+   is a **setup decision to raise with the human** (§8), not an assumption.
+   Gitignoring keeps git clean but the working state lives only on this machine;
+   committing the apparatus survives across machines and versions the run history
+   at the cost of some git noise. Ask, then do what they choose. Either way, the
+   work the agents produce is committed on a dedicated branch — that's the
+   deliverable, never gitignored.
+2. **Everything the system writes inside the project is namespaced** (`.overnight/`
+   or an `overnight-` prefix) and listed in `.overnight/manifest.json`.
+3. **`CLAUDE.md` is the one shared file you may touch** (sessions auto-read it).
+   If it doesn't exist, create it (handled per the git choice above) containing
+   only the orientation pointer to `.overnight/orientation.md`. If it already
+   exists, append exactly one block delimited by `<!-- overnight:start -->` and
+   `<!-- overnight:end -->` holding only that pointer — so teardown can remove
+   precisely that block and leave the human's content untouched.
+4. **Archives live outside the project** (§10), so they never enter its git.
+
+Within the working area, every agent may read and edit freely — they are not
+sandboxed from each other. The discipline is only at the boundary: the system's
+own apparatus stays namespaced and tracked (and gitignored unless the human chose
+to commit it), so when the arc ends the project is exactly as it was, plus the
+work, minus the scaffolding.
 
 ---
 
-## 1. How the human uses this (tell them this up front)
+## 1. How the human communicates with it (two channels)
 
-> Open this repo in Claude Code and say: "Read START_HERE.md and let's set this
-> up." Talk with me about what you're building, look over what I produce, and
-> refine by talking ("did we cover X?", "make the roadmap revisit Y at the
-> end"). You never have to edit the plan yourself unless you want to. When
-> HANDOFF.md appears, you're ready to run.
+There is no persistent "it" holding the conversation in its head — every session
+is amnesiac. Communication works because **state lives in files and every session
+reads them on startup** (via `CLAUDE.md`). There are two distinct channels; make
+both clear to the human:
+
+- **To run it (headless):** `python .overnight/run.py` — the autonomous overnight
+  loop. The human doesn't chat with this; they start it and walk away.
+- **To talk to it (interactive):** open `claude` in the repo and just talk. Because
+  `CLAUDE.md` orients every session, a fresh interactive session already knows the
+  arc, the roadmap, and the current state before the human says anything. So
+  "did we cover X?", "bias toward more detail", or "we're done" all just work —
+  the session reads the files and acts.
+
+Give the human a small set of **slash commands** (`.claude/commands/overnight-*.md`)
+as the unambiguous control surface, e.g.:
+
+- `/overnight-status` — read the roadmap + state and summarise progress, cost, and
+  what's left.
+- `/overnight-adjust` — capture a change the human wants (record it to the bus /
+  roadmap) so the next run picks it up.
+- `/overnight-wrap-up` — the human is done: run teardown — archive the
+  retrospective, then remove the apparatus (§10).
+
+Tell the human these exist and that plain talking works too — the commands are
+just the reliable version. Adapt the names to taste.
+
+> Quick start for the human: "Read START_HERE.md and let's set this up." Talk
+> through the arc, look over what I produce, refine by talking. When HANDOFF.md
+> appears you're ready. Run with `python .overnight/run.py`; talk to it any time
+> by opening `claude` here; finish with `/overnight-wrap-up`.
 
 ---
 
@@ -60,12 +121,22 @@ as it was (plus the work produced, minus the scaffolding) when the arc ends.
    the README, manifests, structure, recent git history — and form an honest
    picture of the existing project before proposing anything. Also check the
    archive (§10): if a similar arc was done before, it's reference material.
-1. **Understand the arc (§8)** — through conversation, not a form. Don't write
+1. **Welcome and orient the human.** Assume they're new to this — they likely
+   grabbed this file to try it out and have no idea what it sets up. Before any
+   questions, explain in plain language, in your own words: what this is (a system
+   that will work on one goal autonomously, overnight), what the two of you are
+   about to do together (scope the goal, then you assemble the machine), roughly
+   how it'll work afterward (it runs while they're away; they talk to it or run it;
+   they can stop and finish it any time), and set honest expectations (it's
+   powerful but the first run wants supervision; it uses their Claude plan within
+   caps). Keep it short and human, check they're comfortable, invite questions —
+   then ease into the conversation. Don't interrogate a stranger; bring them in.
+2. **Understand the arc (§8)** — through conversation, not a form. Don't write
    anything until you genuinely understand the goal and have played your
    understanding back to the human.
-2. **Assemble the apparatus** (§0), contained and tracked in `manifest.json`.
-3. **Walk the human through it** and revise on their feedback, conversationally.
-4. **Write HANDOFF.md** with the run command and a checklist.
+3. **Assemble the apparatus** (§0), contained and tracked in `manifest.json`.
+4. **Walk the human through it** and revise on their feedback, conversationally.
+5. **Write HANDOFF.md** with the run command and a checklist.
 
 ---
 
@@ -83,13 +154,12 @@ prompts so every future session inherits them.
   When in doubt about where a decision goes: if it needs judgment, an agent makes
   it.
 - **Contain the apparatus; never clobber the human's work.** In an existing
-  project you are a guest. Keep everything the system adds under one namespaced
-  home (`.overnight/` for roadmap, bus, runner, logs; clearly-named
-  `.claude/agents/overnight-*.md` for agents), and record every file you create
-  in `manifest.json`. Never overwrite an existing `CLAUDE.md` — append a short
-  pointer instead. Do the actual work on a dedicated git branch. This separation
-  is what lets the system clear itself later (§10) without disturbing anything
-  that was here before, or the work it produced.
+  project you are a guest. Follow the concrete layout and integration rules in §0
+  exactly: everything the system owns lives in a gitignored `.overnight/` (plus
+  `overnight-`-prefixed, gitignored files under `.claude/`), every created path is
+  recorded in `manifest.json`, and `CLAUDE.md` is touched only via one delimited
+  block. This is what lets the system clear itself later (§10) without disturbing
+  anything that was here before, or the work it produced.
 - **One task per session.** Each `claude -p` run does ONE roadmap step in a
   fresh context. Batching many steps into one session measurably lowers quality
   because attention spreads thin. Fresh context each time keeps it sharp; the
@@ -207,12 +277,22 @@ does what the agent's control block says.
 
 - One paragraph: what got assembled.
 - A checklist for the human: skim `ROADMAP.md`, the agent prompts, `CLAUDE.md`.
-- The single command to start the overnight run, and how to stop it.
-- A note that they can keep discussing with you to refine any of it before running.
+- **The two channels, spelled out:** run it with `python .overnight/run.py`; talk
+  to it any time by opening `claude` in this repo (it orients itself from `CLAUDE.md`).
+- **The commands:** `/overnight-status`, `/overnight-adjust`, `/overnight-wrap-up`
+  — what each does, and that plain talking works too.
+- How to stop a run, and how to finish the arc (`/overnight-wrap-up`).
+- A note that they can keep discussing with you to refine anything before running.
 
 ---
 
 ## 8. Understand the project — through conversation, not a checklist
+
+By now you've welcomed and oriented the human (§2 step 1), so they know what
+they're getting into. This is the next part of that same conversation, not a
+separate questionnaire. Assume they may still be fuzzy on the system — explain
+*why* you're asking something when it isn't obvious, and offer sensible defaults
+they can simply accept rather than forcing every decision onto a newcomer.
 
 Do **not** fire a fixed list of questions and tick boxes. Have a real
 conversation. Your goal is genuine understanding of what the human wants and how
@@ -234,6 +314,10 @@ voice, things like:
   must always come back to them?
 - Where does the output live — stack, repo, fresh or existing?
 - How autonomous do they want it — full runs within caps, or pauses at checkpoints?
+- How should the apparatus relate to git — gitignored (default; clean history,
+  state stays on this machine) or committed (survives across machines, versions
+  the run history, some git noise)? And where should the archive live (default
+  `~/.overnight/archive/<project>/<arc>/`, or a path/repo they prefer)?
 
 Treat that as the understanding you need, not a script to read aloud — and
 expect to need more for any project that doesn't fit the mould. When you believe
@@ -263,11 +347,6 @@ you build anything.
 
 ---
 
-*Begin by greeting the human and getting into the conversation in §8. Build the
-machine, not the project.*
-
----
-
 ## 10. Lifecycle: run nightly, then archive and clear
 
 This apparatus is meant to live only as long as the arc.
@@ -279,8 +358,9 @@ or just talk to you ("last night's output was too terse — bias toward more
 detail"). Re-runs absorb those adjustments. The human reviews each night's branch
 diffs before trusting the next run.
 
-**Teardown — when the human says the arc is done** ("we're finished, clear
-yourself"), do this in order:
+**Teardown — when the human says the arc is done** (via `/overnight-wrap-up`, or
+just telling an interactive session "we're finished, clear yourself" — it knows
+what they mean because `CLAUDE.md` oriented it on startup), do this in order:
 
 1. **Archive a retrospective.** Write to the archive: what the arc was, the
    roadmap as it actually ended up (not just as planned), key decisions, what
@@ -288,13 +368,19 @@ yourself"), do this in order:
    prompts. This is the arc's memory.
 2. **Leave the work.** The actual output (the branch / merged changes) stays —
    that's the deliverable. Teardown removes scaffolding, not results.
-3. **Remove the apparatus** using `manifest.json`: exactly the files the system
-   created, nothing else. Delete the working branch only if the human has merged
-   it. The project is left as it was, plus the work, minus the scaffolding.
+3. **Remove the apparatus** using `manifest.json`: delete exactly the paths the
+   system created (`.overnight/`, the `overnight-*` files under `.claude/`), remove
+   the delimited block from `CLAUDE.md` (or the whole file if the system created
+   it), and drop any `.gitignore` lines it added. Delete the working branch only
+   if the human has merged it. The project is left exactly as it was, plus the
+   work, minus every trace of the scaffolding.
 
-**The archive.** Choose a location with the human, ideally *outside* this repo so
-it survives across arcs and projects (e.g. `~/overnight-archive/<arc-name>/`, or a
-small dedicated repo). One folder per arc, each holding its retrospective.
+**The archive — concrete location.** Default to **outside** the repo so it never
+enters any project's git and is reusable across projects:
+`~/.overnight/archive/<project-name>/<arc-name>/`, holding `retrospective.md`,
+the final `roadmap.md`, and the final agent prompts. Confirm the path with the
+human at setup (a dedicated git repo is a fine alternative if they want it backed
+up and versioned). One folder per arc.
 
 **Reuse across arcs.** When the human later says "remember that arc we did? let's
 do something similar, but this time…", read the relevant archived retrospective
@@ -303,3 +389,9 @@ not working — then set up the new arc informed by it. The archive is how the
 system improves over time instead of starting from zero each time. Surfacing
 "last time you said X didn't work, so I'll do Y instead" is exactly the behaviour
 to aim for.
+
+---
+
+*Begin by welcoming the human as a newcomer (§2 step 1): explain plainly what this
+is and how you'll work together, set honest expectations, then ease into the
+conversation in §8. Build the machine, not the project.*
