@@ -57,6 +57,14 @@ freedom is the point — agents are not sandboxed away from each other's work.
 These are hard-won; encode them into `CLAUDE.md`, `ROADMAP.md`, and the agent
 prompts so every future session inherits them.
 
+- **Intelligence lives in the agents, not the runner.** Keep `run.py` as dumb as
+  the project allows. It runs a session, reads the decision the session handed
+  back, and mechanically does that — call this agent, poll that source, loop,
+  enforce caps. Judgment calls ("fix this now or make it a roadmap task?", "what
+  do we work on next?", "which agent should handle this?") belong to agents and
+  are expressed through the control protocol, never hardcoded as Python logic.
+  When in doubt about where a decision goes: if it needs judgment, an agent makes
+  it.
 - **One task per session.** Each `claude -p` run does ONE roadmap step in a
   fresh context. Batching many steps into one session measurably lowers quality
   because attention spreads thin. Fresh context each time keeps it sharp; the
@@ -98,6 +106,14 @@ projects want more, some fewer — but the spine is:
   issues to the bus, never edits.
 - **planner** — owns `ROADMAP.md`. Adds/splits/reorders/reopens steps per §3
   based on what the others report.
+- **orchestrator** *(add for complex projects)* — decides what to work on next
+  and which agent should do it. Useful when the roadmap has several parallel
+  tracks rather than one line: the runner asks the orchestrator "what now?" and
+  it picks the track, the step, and the agent. For a simple linear project you
+  don't need this — the next step is just the next unchecked item.
+
+Scale the set to the project: a small job might only need builder + reviewer; a
+large, high-quality one benefits from all of the above. Decide with the human.
 
 Give every agent permission to read the whole repo. Builder may edit; reviewer
 is read-only; planner edits only the roadmap and the bus.
@@ -124,25 +140,41 @@ before you start." Agents leave replies the same way. That's the whole protocol
 
 ---
 
-## 6. The runner (`run.py`)
+## 6. The runner (`run.py`) — keep it thin
 
-Build a Python loop that drives the CLI the human already pays for. Requirements:
+`run.py` is a dumb dispatcher, not a brain (see §3). It drives the CLI the human
+already pays for and does only mechanical work; every real decision comes from an
+agent via the control block.
+
+The loop:
 
 - Each iteration runs **one** `claude -p "<prompt>" --output-format json
   --permission-mode acceptEdits` session, in the repo, on a dedicated git branch.
-- The prompt points the session at `bus/state.json` and its inbox, and tells it
-  to do the next roadmap step per §3.
-- Each session ends its reply with a fenced ` ```control ` block:
-  `{"status": "continue|done|blocked", "next_prompt": "...", "summary": "...",
-  "reason": "..."}`. The runner parses it, carries `next_prompt` to the next
-  fresh session (the runner is the memory across the context boundary), and
-  stops on `done`, `blocked`, a repeated/empty next_prompt (stall), or a cap.
+- The prompt points the session at `bus/state.json` and its inbox and tells it
+  what to do (per §3). Which session you run can itself be an agent's decision —
+  e.g. ask the orchestrator "what next?" and run whatever it names.
+- Each session ends its reply with a fenced ` ```control ` block. Make it
+  **action-oriented**, so the agent tells the runner what to do next rather than
+  the runner deciding. For example:
+  `{"status": "continue|done|blocked", "action": "next_step|delegate|poll|consult_principal",
+  "agent": "builder", "next_prompt": "...", "summary": "...", "reason": "..."}`.
+  The runner just executes the named action — run that agent, poll that source,
+  consult the principal — carries any `next_prompt` to the next fresh session
+  (the runner is the memory across the context boundary), and loops.
+- It stops only on `done`, `blocked`, a stall (repeated/empty next step), or a cap.
 - **Caps, always:** `MAX_ITERATIONS` and `MAX_BUDGET_USD`, with running cost
   printed each loop. Worst case must be "it stopped and left a note," never "it
   ran all night in circles."
-- When a session's control block signals a *project decision* is needed, the
-  runner invokes the **principal** agent for an answer and feeds it back, rather
-  than waking the human.
+
+**External inputs / live feedback (optional).** A project may have a source of
+new work the system should watch — a database of user comments, an issue
+tracker, an inbox. If so, the runner can periodically check whether there's new
+content (a quick read, or a small `claude` skill/command the project sets up with
+its own API keys), and when there is, hand it to an agent to **triage**. The
+agent decides — not Python — whether each item is a quick fix to do now or a new
+roadmap task for the planner to schedule. Small things may get fixed on the spot;
+larger ones become tracked steps. Python only ferries the items to the agent and
+does what the agent's control block says.
 
 ---
 
